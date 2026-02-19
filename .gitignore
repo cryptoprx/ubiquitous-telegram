@@ -1,0 +1,6 @@
+# Ignore everything - this repo is only for GitHub Releases
+*
+
+# Except this README
+!RELEASES_README.md
+!.gitignore
