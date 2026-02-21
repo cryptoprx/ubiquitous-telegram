@@ -1,11 +1,15 @@
 {
+  "1.2.68": [
+    "AI relay: companion messages processed by browser's local AI model",
+    "Wallet sync between companion and browser via Firestore",
+    "File Bridge metadata sync for cross-device visibility",
+    "Chat user discovery and direct messaging"
+  ],
   "1.2.67": [
-    "QR code pairing — browser shows a QR code in Settings → Companion App, phone scans to pair instantly",
-    "Security hardening — one-time pairing tokens with SHA-256 verification, 5-minute expiry, auto-cleanup",
-    "Device identity — persistent browser device ID for all sync operations",
-    "Input sanitization — blocks javascript:/data: URIs, validates all remote commands",
-    "Replay protection — remote commands older than 60s are rejected and deleted",
-    "Data minimization — commands deleted after processing, tabs synced as single doc instead of per-tab"
+    "AI relay: companion messages processed by browser's local AI model",
+    "Wallet sync between companion and browser via Firestore",
+    "File Bridge metadata sync for cross-device visibility",
+    "Chat user discovery and direct messaging"
   ],
   "1.2.66": [
     "QR code pairing — browser shows a QR code in Settings → Companion App, phone scans to pair instantly",

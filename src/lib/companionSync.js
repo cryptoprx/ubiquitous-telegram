@@ -388,14 +388,35 @@ function startAIRelay() {
 
 // ── Wallet Sync ─────────────────────────────────────────────────
 // Push browser wallet to Firestore so companion can see it, and vice versa.
+// Seed is encrypted with AES-256-GCM (PBKDF2-derived key) before storing.
 
-export function syncWalletToFirestore(walletData) {
+async function encryptSeed(plaintext, uid) {
+  const password = 'flip-wallet-' + uid;
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']
+  );
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const buf = new Uint8Array(salt.length + iv.length + ct.byteLength);
+  buf.set(salt, 0);
+  buf.set(iv, salt.length);
+  buf.set(new Uint8Array(ct), salt.length + iv.length);
+  return btoa(String.fromCharCode(...buf));
+}
+
+export async function syncWalletToFirestore(walletData) {
   const uid = getPairedUserId();
   if (!uid || !walletData) return;
   try {
     const firestore = getDb();
+    const encryptedSeed = walletData.seed ? await encryptSeed(walletData.seed, uid) : '';
     setDoc(doc(firestore, 'users', uid, 'settings', 'wallet'), {
-      ...walletData,
+      address: walletData.address,
+      encryptedSeed,
       updatedAt: serverTimestamp(),
       source: 'browser',
     }, { merge: true }).catch(() => {});

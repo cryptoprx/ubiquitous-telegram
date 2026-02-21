@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import useBrowserStore from '../../store/browserStore';
+import { forwardNotification } from '../../lib/companionSync';
 
 // ── Security: Permission mapping ─────────────────────────────────
 // Maps API call types to the permission required in manifest.json
@@ -440,6 +441,7 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
         }
         case 'ui.notification':
           console.log(`[Extension ${extension.id}] ${sanitizeString(payload?.message, 500)}`);
+          forwardNotification({ type: 'general', title: extension.name || 'Extension', body: sanitizeString(payload?.message, 500) });
           result = true;
           break;
         case 'ui.badge':

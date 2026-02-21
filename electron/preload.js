@@ -194,6 +194,7 @@ contextBridge.exposeInMainWorld('flipAPI', {
   onAiSwitchTab: (cb) => { ipcRenderer.on('ai-switch-tab', (_, tabId) => cb(tabId)); },
   onAiCloseOtherTabs: (cb) => { ipcRenderer.on('ai-close-other-tabs', () => cb()); },
   onBookmarksUpdated: (cb) => { ipcRenderer.on('bookmarks-updated', () => cb()); },
+  onWatcherChange: (cb) => { ipcRenderer.on('watcher-change', (_, data) => cb(data)); },
 
   // Window management
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),

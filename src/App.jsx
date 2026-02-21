@@ -13,7 +13,7 @@ import DevDashboard from './components/extensions/DevDashboard';
 import BookmarksBar from './components/BookmarksBar';
 import Marketplace from './components/Marketplace';
 import LicenseGate from './components/LicenseGate';
-import { initCompanionSync } from './lib/companionSync';
+import { initCompanionSync, forwardNotification } from './lib/companionSync';
 
 export default function App() {
   const {
@@ -169,6 +169,11 @@ export default function App() {
           const keep = state.activeTabId;
           state.tabs.forEach(t => { if (t.id !== keep) state.closeTab(t.id); });
         });
+        // Page change watcher → forward to companion
+        window.flipAPI.onWatcherChange?.((data) => {
+          forwardNotification({ type: 'security', title: 'Page Changed: ' + (data.label || ''), body: data.url || '' });
+        });
+
         window.flipAPI.onBookmarksUpdated?.(async () => {
           const bm = await window.flipAPI.getBookmarks();
           if (bm) useBrowserStore.getState().setBookmarks(bm);
