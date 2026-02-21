@@ -988,7 +988,10 @@ function DownloadsView() {
   useEffect(() => {
     if (window.flipAPI) {
       window.flipAPI.getDownloads().then((dl) => { if (dl) setDownloads([...dl]); });
-      window.flipAPI.onDownloadStarted((dl) => setDownloads((p) => [dl, ...p]));
+      window.flipAPI.onDownloadStarted((dl) => {
+        setDownloads((p) => [dl, ...p]);
+        forwardNotification({ type: 'download', title: 'Download Started', body: dl.filename || dl.url || '' });
+      });
       window.flipAPI.onDownloadUpdated((dl) => setDownloads((p) => p.map((d) => d.id === dl.id ? dl : d)));
       window.flipAPI.onDownloadDone((dl) => {
         setDownloads((p) => p.map((d) => d.id === dl.id ? dl : d));

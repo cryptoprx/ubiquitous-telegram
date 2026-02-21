@@ -29,6 +29,7 @@ let unsubCommands = null;
 let unsubPairing = null;
 let unsubAI = null;
 let unsubFiles = null;
+let unsubWallet = null;
 let tabSyncInterval = null;
 
 function getDb() {
@@ -423,6 +424,68 @@ export async function syncWalletToFirestore(walletData) {
   } catch {}
 }
 
+// ── File Bridge Listener ────────────────────────────────────────
+// When companion uploads a file, browser sees it and notifies user.
+
+function startFileBridgeListener() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    const q = query(
+      collection(firestore, 'users', uid, 'sharedFiles'),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
+    let firstSnapshot = true;
+    unsubFiles = onSnapshot(q, (snap) => {
+      if (firstSnapshot) { firstSnapshot = false; return; } // skip initial load
+      snap.docChanges().forEach((change) => {
+        if (change.type !== 'added') return;
+        const file = change.doc.data();
+        if (file.source === 'browser') return; // ignore our own uploads
+        console.log('[Companion] New shared file from companion:', file.name);
+        // Notify user and auto-open in new tab
+        forwardNotification({ type: 'download', title: 'File from Companion', body: file.name || 'New file' });
+        if (file.url) {
+          // Open the file URL in browser so user can download/view it
+          const { addTab } = useBrowserStore.getState();
+          if (addTab) addTab(file.url);
+        }
+      });
+    });
+  } catch (e) {
+    console.error('[Companion] File bridge listener error:', e.message);
+  }
+}
+
+// ── Wallet Listener ────────────────────────────────────────────
+// Listen for wallet data from companion and store locally.
+
+function startWalletListener() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    unsubWallet = onSnapshot(doc(firestore, 'users', uid, 'settings', 'wallet'), (snap) => {
+      const data = snap.data();
+      if (!data || data.source === 'browser') return; // ignore our own writes
+      if (data.address) {
+        console.log('[Companion] Wallet synced from companion:', data.address);
+        // Store in localStorage for the crypto view to use
+        localStorage.setItem('flip-companion-wallet', JSON.stringify({
+          address: data.address,
+          encryptedSeed: data.encryptedSeed || '',
+          source: data.source,
+          updatedAt: Date.now(),
+        }));
+      }
+    });
+  } catch (e) {
+    console.error('[Companion] Wallet listener error:', e.message);
+  }
+}
+
 // ── Start / Stop Sync ────────────────────────────────────────────
 
 export function startSync() {
@@ -433,12 +496,18 @@ export function startSync() {
   tabSyncInterval = setInterval(syncTabs, TAB_SYNC_INTERVAL_MS);
   startCommandListener();
   startAIRelay();
+  startFileBridgeListener();
+  startWalletListener();
+
+  // Let companion know the browser is online and syncing
+  forwardNotification({ type: 'general', title: 'Browser Connected', body: 'Flip Browser is online and syncing.' });
 }
 
 export function stopSync() {
   if (unsubCommands) { unsubCommands(); unsubCommands = null; }
   if (unsubAI) { unsubAI(); unsubAI = null; }
   if (unsubFiles) { unsubFiles(); unsubFiles = null; }
+  if (unsubWallet) { unsubWallet(); unsubWallet = null; }
   if (tabSyncInterval) { clearInterval(tabSyncInterval); tabSyncInterval = null; }
 }
 

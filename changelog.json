@@ -1,9 +1,13 @@
 {
+  "1.2.69": [
+    "Forward extension notifications to companion app",
+    "Forward page change watcher alerts to companion",
+    "Encrypt wallet seed in Firestore (AES-256-GCM)"
+  ],
   "1.2.68": [
-    "AI relay: companion messages processed by browser's local AI model",
-    "Wallet sync between companion and browser via Firestore",
-    "File Bridge metadata sync for cross-device visibility",
-    "Chat user discovery and direct messaging"
+    "Forward extension notifications to companion app",
+    "Forward page change watcher alerts to companion",
+    "Encrypt wallet seed in Firestore (AES-256-GCM)"
   ],
   "1.2.67": [
     "AI relay: companion messages processed by browser's local AI model",
