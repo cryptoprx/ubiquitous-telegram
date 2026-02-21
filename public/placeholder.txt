@@ -1,0 +1,2 @@
+This directory is for static assets like icons.
+Place your icon.png file here for the app icon.

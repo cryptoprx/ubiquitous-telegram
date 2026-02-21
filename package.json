@@ -1,0 +1,78 @@
+{
+  "name": "flip-browser",
+  "version": "1.2.65",
+  "description": "Flip Browser — A blazing-fast, privacy-first browser with React extensions",
+  "author": "CROAKWORKS <admin@croak.work> (https://croak.work)",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "build": "node scripts/clean-build.js && node scripts/generate-integrity.js && vite build && electron-builder && node scripts/restore-output.js",
+    "start": "cross-env NODE_ENV=production electron .",
+    "vite:dev": "vite",
+    "pack": "electron-builder --dir",
+    "build:mac": "node scripts/clean-build.js && node scripts/generate-integrity.js && vite build && electron-builder --mac --publish never && node scripts/restore-output.js",
+    "build:linux": "node scripts/clean-build.js && node scripts/generate-integrity.js && vite build && electron-builder --linux --publish never && node scripts/restore-output.js",
+    "notes": "node scripts/update-changelog.js",
+    "publish": "node scripts/publish.js"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "electron-updater": "^6.7.3",
+    "firebase": "^12.9.0",
+    "lucide-react": "^0.300.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@electron/fuses": "^2.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "vite": "^5.0.10",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.flip.browser",
+    "productName": "Flip Browser",
+    "directories": {
+      "output": "release"
+    },
+    "asar": true,
+    "afterPack": "./scripts/afterPack.js",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "extensions/**/*",
+      "changelog.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/fliplogo.png"
+    },
+    "mac": {
+      "target": [
+        "zip",
+        "dmg"
+      ],
+      "icon": "public/fliplogo.png",
+      "category": "public.app-category.productivity",
+      "artifactName": "Flip-Browser-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "public/fliplogo.png"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "cryptoprx",
+      "repo": "ubiquitous-telegram"
+    }
+  }
+}

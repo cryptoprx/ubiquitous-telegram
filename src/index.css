@@ -1,0 +1,314 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Theme CSS Variables (RGB triplets for Tailwind opacity support) ── */
+:root {
+  --flip-400: 255 122 77;
+  --flip-500: 255 98 52;
+  --accent-400: 45 212 168;
+  --accent-500: 20 184 166;
+  --surface-0: 12 10 9;
+  --surface-1: 28 25 23;
+  --surface-2: 38 31 27;
+  --surface-3: 48 41 36;
+  --surface-4: 59 51 45;
+  --surface-5: 71 64 56;
+  --text-base: 255 255 255;
+  --border-base: 255 255 255;
+  --glass-bg: rgba(255,255,255,0.05);
+  --glass-border: rgba(255,255,255,0.1);
+  --glass-hover: rgba(255,255,255,0.1);
+  --scrollbar-thumb: rgba(255,122,77,0.2);
+  --scrollbar-hover: rgba(255,122,77,0.35);
+}
+
+/* ── Theme: Ocean Blue ── */
+[data-theme="ocean"] {
+  --flip-400: 96 165 250;
+  --flip-500: 59 130 246;
+  --accent-400: 34 211 238;
+  --accent-500: 6 182 212;
+  --surface-0: 8 10 15;
+  --surface-1: 15 20 30;
+  --surface-2: 22 28 40;
+  --surface-3: 30 38 52;
+  --surface-4: 40 48 64;
+  --surface-5: 50 58 74;
+  --scrollbar-thumb: rgba(59,130,246,0.2);
+  --scrollbar-hover: rgba(59,130,246,0.35);
+}
+
+/* ── Theme: Midnight Purple ── */
+[data-theme="purple"] {
+  --flip-400: 192 132 252;
+  --flip-500: 168 85 247;
+  --accent-400: 244 114 182;
+  --accent-500: 236 72 153;
+  --surface-0: 10 8 15;
+  --surface-1: 20 16 30;
+  --surface-2: 28 22 42;
+  --surface-3: 38 30 55;
+  --surface-4: 48 40 68;
+  --surface-5: 58 50 78;
+  --scrollbar-thumb: rgba(168,85,247,0.2);
+  --scrollbar-hover: rgba(168,85,247,0.35);
+}
+
+/* ── Theme: Forest Green ── */
+[data-theme="forest"] {
+  --flip-400: 74 222 128;
+  --flip-500: 34 197 94;
+  --accent-400: 163 230 53;
+  --accent-500: 132 204 22;
+  --surface-0: 8 12 8;
+  --surface-1: 16 24 16;
+  --surface-2: 22 32 22;
+  --surface-3: 30 42 30;
+  --surface-4: 38 52 38;
+  --surface-5: 48 62 48;
+  --scrollbar-thumb: rgba(34,197,94,0.2);
+  --scrollbar-hover: rgba(34,197,94,0.35);
+}
+
+/* ── Theme: Rose Gold ── */
+[data-theme="rose"] {
+  --flip-400: 251 146 160;
+  --flip-500: 244 63 94;
+  --accent-400: 251 191 36;
+  --accent-500: 234 179 8;
+  --surface-0: 15 10 12;
+  --surface-1: 28 20 24;
+  --surface-2: 38 28 32;
+  --surface-3: 50 38 42;
+  --surface-4: 62 48 52;
+  --surface-5: 74 58 62;
+  --scrollbar-thumb: rgba(244,63,94,0.2);
+  --scrollbar-hover: rgba(244,63,94,0.35);
+}
+
+/* ── Theme: Monochrome ── */
+[data-theme="mono"] {
+  --flip-400: 180 180 180;
+  --flip-500: 160 160 160;
+  --accent-400: 200 200 200;
+  --accent-500: 180 180 180;
+  --surface-0: 10 10 10;
+  --surface-1: 22 22 22;
+  --surface-2: 30 30 30;
+  --surface-3: 40 40 40;
+  --surface-4: 50 50 50;
+  --surface-5: 60 60 60;
+  --scrollbar-thumb: rgba(160,160,160,0.2);
+  --scrollbar-hover: rgba(160,160,160,0.35);
+}
+
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Scrollbar — Chromium */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-hover);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Scrollbar — Firefox fallback */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  /* Hide scrollbar completely */
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Select dropdowns */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+
+  select option {
+    background: #1c1917;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  /* Webview styling */
+  webview {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Title bar drag region */
+  .drag-region {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+
+  .glass-hover {
+    @apply hover:bg-white/10 transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply px-3 py-1.5 rounded-full text-sm text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-flip-500 to-flip-400 hover:from-flip-400 hover:to-flip-500 text-white transition-all duration-200 cursor-pointer shadow-lg shadow-flip-500/20;
+  }
+
+  .btn-accent {
+    @apply px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-accent-500 to-accent-400 hover:from-accent-400 hover:to-accent-500 text-white transition-all duration-200 cursor-pointer;
+  }
+
+  .input-base {
+    @apply bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-flip-500/50 focus:bg-white/10 transition-all duration-200;
+  }
+
+  .tab-active {
+    @apply bg-gradient-to-r from-flip-500/15 to-transparent text-white border-l-2 border-flip-500;
+  }
+
+  .tab-inactive {
+    @apply text-white/45 hover:text-white/75 hover:bg-white/5 border-l-2 border-transparent;
+  }
+
+  .sidebar-section {
+    @apply px-3 py-2 text-[10px] font-bold text-white/30 uppercase tracking-widest;
+  }
+
+  .tooltip {
+    @apply absolute z-50 px-2.5 py-1 text-xs bg-surface-4 text-white/90 rounded-full shadow-lg border border-white/10 whitespace-nowrap;
+  }
+
+  .loading-bar {
+    @apply h-0.5 rounded-full;
+    background: linear-gradient(90deg, #ff6234, #2dd4a8, #ff6234);
+    background-size: 200% 100%;
+    animation: shimmerBar 1.5s ease-in-out infinite;
+  }
+
+  .flip-gradient-text {
+    background: linear-gradient(135deg, rgb(var(--flip-400)), rgb(var(--flip-500)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .flip-accent-gradient-text {
+    background: linear-gradient(135deg, rgb(var(--accent-400)), rgb(var(--accent-500)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .flip-card-surface {
+    @apply bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .flip-card-surface:hover {
+    @apply bg-white/10 border-white/15;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,122,77,0.05);
+  }
+}
+
+@keyframes shimmerBar {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes orbFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, 20px) scale(1.08); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out both;
+}
+
+/* Command palette overlay */
+.command-overlay {
+  background: rgba(12, 10, 9, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+/* Extension iframe styles */
+.extension-frame {
+  border: none;
+  background: transparent;
+}
+
+/* Split view divider */
+.split-divider {
+  @apply w-1 bg-white/10 hover:bg-flip-500/50 cursor-col-resize transition-colors duration-150;
+}
+
+/* Flip logo spin on hover */
+.flip-logo {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.flip-logo:hover {
+  transform: rotateY(180deg);
+}
+

@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Base gradient — rich warm coral with 4-stop depth -->
+    <linearGradient id="bgMain" x1="40" y1="20" x2="490" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFB88C"/>
+      <stop offset="30%" stop-color="#FF7847"/>
+      <stop offset="65%" stop-color="#F04A1E"/>
+      <stop offset="100%" stop-color="#9E1E08"/>
+    </linearGradient>
+
+    <!-- Teal underside revealed by the fold -->
+    <linearGradient id="tealFold" x1="380" y1="32" x2="480" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#67f5dc"/>
+      <stop offset="50%" stop-color="#2dd4a8"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+
+    <!-- The curling flap — the coral page being peeled -->
+    <linearGradient id="flapGrad" x1="400" y1="32" x2="340" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF9B6B"/>
+      <stop offset="40%" stop-color="#E8603A"/>
+      <stop offset="100%" stop-color="#B83D18"/>
+    </linearGradient>
+
+    <!-- Shadow under the curling flap -->
+    <linearGradient id="flapShadow" x1="370" y1="80" x2="430" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Top glass highlight -->
+    <linearGradient id="glassTop" x1="60" y1="32" x2="300" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.28"/>
+      <stop offset="35%" stop-color="#fff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Left rim light -->
+    <linearGradient id="rimLight" x1="32" y1="120" x2="64" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- F letter gradient — crisp white-to-cool-white -->
+    <linearGradient id="letterGrad" x1="170" y1="100" x2="280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+
+    <!-- F letter drop shadow -->
+    <filter id="letterShadow" x="-8%" y="-5%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#6B1606" flood-opacity="0.4"/>
+    </filter>
+
+    <!-- Teal dot glow -->
+    <radialGradient id="tealGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#5eead4" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#5eead4" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Teal dot fill -->
+    <linearGradient id="tealDot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#80ffe6"/>
+      <stop offset="45%" stop-color="#34d5ad"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+
+    <!-- Outer drop shadow -->
+    <filter id="outerShadow" x="-14%" y="-10%" width="138%" height="148%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#5C1204" flood-opacity="0.6"/>
+    </filter>
+
+    <!-- Clip: cut the top-right corner off the main rect -->
+    <clipPath id="cutCorner">
+      <path d="M 144 32 L 370 32 Q 380 32 380 32 L 480 132 L 480 368 C 480 430 430 480 368 480 L 144 480 C 82 480 32 430 32 368 L 32 144 C 32 82 82 32 144 32 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- ========== OUTER SHADOW GROUP ========== -->
+  <g filter="url(#outerShadow)">
+
+    <!-- Teal underside — visible through the cut corner -->
+    <path d="M 370 32 L 480 32 C 480 32 480 32 480 32 L 480 132 Z" fill="url(#tealFold)"/>
+
+    <!-- Main body with cut corner -->
+    <g clip-path="url(#cutCorner)">
+      <rect x="32" y="32" width="448" height="448" rx="112" ry="112" fill="url(#bgMain)"/>
+    </g>
+  </g>
+
+  <!-- ========== CURLING FLAP (page peel) ========== -->
+  <!-- Shadow cast on the teal surface -->
+  <path d="M 375 38 L 474 130 L 440 130 L 390 68 Z" fill="url(#flapShadow)" opacity="0.6"/>
+
+  <!-- The flap itself — curving from the cut edge -->
+  <path d="M 370 32 L 480 132 C 458 132 436 128 424 114 C 404 90 398 52 370 32 Z" fill="url(#flapGrad)"/>
+
+  <!-- Flap inner shadow line (crease) -->
+  <path d="M 370 32 L 480 132" stroke="#000" stroke-opacity="0.08" stroke-width="1.5" fill="none"/>
+
+  <!-- Flap highlight edge -->
+  <path d="M 374 36 L 476 130" stroke="#fff" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+  <!-- ========== GLASS & LIGHT OVERLAYS ========== -->
+  <!-- Top glass -->
+  <g clip-path="url(#cutCorner)">
+    <rect x="32" y="32" width="448" height="448" rx="112" ry="112" fill="url(#glassTop)"/>
+  </g>
+
+  <!-- Left rim light -->
+  <rect x="32" y="100" width="6" height="320" rx="3" fill="url(#rimLight)"/>
+
+  <!-- Specular highlight -->
+  <ellipse cx="180" cy="118" rx="90" ry="48" fill="white" opacity="0.04"/>
+
+  <!-- ========== THE F LETTERFORM ========== -->
+  <g transform="translate(256,264) scale(-1,1) translate(-256,-264)" filter="url(#letterShadow)">
+    <path
+      d="
+        M 170 120
+        C 170 107 181 96 194 96
+        L 336 96
+        C 349 96 360 107 360 120
+        L 360 156
+        C 360 169 349 180 336 180
+        L 246 180
+        L 246 236
+        L 318 236
+        C 331 236 342 247 342 260
+        L 342 288
+        C 342 301 331 312 318 312
+        L 246 312
+        L 246 408
+        C 246 421 235 432 222 432
+        L 194 432
+        C 181 432 170 421 170 408
+        Z
+      "
+      fill="url(#letterGrad)"
+    />
+  </g>
+
+  <!-- F top bar inner highlight -->
+  <g transform="translate(256,264) scale(-1,1) translate(-256,-264)">
+    <path
+      d="
+        M 170 120
+        C 170 107 181 96 194 96
+        L 336 96
+        C 349 96 360 107 360 120
+        L 360 130
+        L 170 130
+        Z
+      "
+      fill="white"
+      opacity="0.15"
+    />
+  </g>
+
+  <!-- ========== TEAL ACCENT DOT ========== -->
+  <!-- Soft glow -->
+  <circle cx="346" cy="392" r="52" fill="url(#tealGlow)"/>
+  <!-- Dot body -->
+  <circle cx="346" cy="392" r="24" fill="url(#tealDot)"/>
+  <!-- Dot specular highlight -->
+  <ellipse cx="340" cy="384" rx="9" ry="6" fill="white" opacity="0.3"/>
+  <!-- Dot rim light -->
+  <circle cx="346" cy="392" r="24" stroke="white" stroke-opacity="0.08" stroke-width="1" fill="none"/>
+</svg>

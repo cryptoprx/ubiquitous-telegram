@@ -1,0 +1,12 @@
+{
+  "id": "community-chat",
+  "name": "Community Chat",
+  "version": "1.0.0",
+  "description": "Flip Browser community chat — connect with other Flip users. Found a bug? Report it here!",
+  "author": "CROAKWORKS",
+  "type": "sidebar",
+  "content_type": "webview",
+  "url": "https://gray-swan-849807.hostingersite.com/",
+  "main": "App.jsx",
+  "permissions": ["tabs", "storage"]
+}
