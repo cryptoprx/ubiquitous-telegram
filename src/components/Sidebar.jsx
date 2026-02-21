@@ -1499,6 +1499,8 @@ function CompanionAppCard() {
   const [paired, setPaired] = useState(isPaired());
   const [showQR, setShowQR] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [pairingCode, setPairingCode] = useState('');
+  const [codeCopied, setCodeCopied] = useState(false);
   const [status, setStatus] = useState('');
   const [countdown, setCountdown] = useState(0);
 
@@ -1512,6 +1514,7 @@ function CompanionAppCard() {
         color: { dark: '#ffffffdd', light: '#00000000' },
       });
       setQrDataUrl(dataUrl);
+      setPairingCode(session.qrPayload);
       setShowQR(true);
       setStatus('Scan this QR code with the Flip companion app');
       setCountdown(300); // 5 min
@@ -1545,6 +1548,8 @@ function CompanionAppCard() {
     cancelPairing();
     setShowQR(false);
     setQrDataUrl('');
+    setPairingCode('');
+    setCodeCopied(false);
     setCountdown(0);
     setStatus('');
   }
@@ -1587,6 +1592,18 @@ function CompanionAppCard() {
             </div>
           )}
           <p className="text-[9px] text-white/25 text-center">Open Flip companion app → More → Scan QR</p>
+          {pairingCode && (
+            <div className="w-full">
+              <p className="text-[8px] text-white/20 text-center mb-1">Or enter this code manually:</p>
+              <button
+                onClick={() => { navigator.clipboard.writeText(pairingCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}
+                className="w-full px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[8px] font-mono text-white/40 hover:text-white/60 break-all text-center transition-colors"
+                title="Click to copy"
+              >
+                {codeCopied ? '✓ Copied!' : pairingCode}
+              </button>
+            </div>
+          )}
           {countdown > 0 && (
             <p className="text-[9px] text-white/15 font-mono">Expires in {mins}:{secs.toString().padStart(2, '0')}</p>
           )}
