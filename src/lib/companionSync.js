@@ -27,6 +27,8 @@ let app = null;
 let db = null;
 let unsubCommands = null;
 let unsubPairing = null;
+let unsubAI = null;
+let unsubFiles = null;
 let tabSyncInterval = null;
 
 function getDb() {
@@ -315,6 +317,91 @@ export function forwardNotification({ type = 'general', title, body }) {
   } catch {}
 }
 
+// ── AI Relay ────────────────────────────────────────────────────
+// Companion writes user messages to Firestore → Browser picks them up,
+// processes via local AI model → writes response back.
+
+function startAIRelay() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    const q = query(
+      collection(firestore, 'users', uid, 'companionAI'),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    );
+    unsubAI = onSnapshot(q, (snap) => {
+      snap.docChanges().forEach(async (change) => {
+        if (change.type !== 'added') return;
+        const msg = change.doc.data();
+        const msgRef = doc(firestore, 'users', uid, 'companionAI', change.doc.id);
+        // Only process pending user messages
+        if (msg.status !== 'pending' || msg.role !== 'user') return;
+        // Mark as processing
+        await setDoc(msgRef, { ...msg, status: 'processing' }, { merge: true }).catch(() => {});
+        try {
+          let reply = '';
+          if (window.flipAPI?.aiChat) {
+            // Use browser's configured local AI model
+            const result = await window.flipAPI.aiChat({
+              messages: [
+                { role: 'system', content: 'You are Flip AI, a helpful assistant. Be concise and friendly.' },
+                ...(msg.history || []).slice(-20),
+                { role: 'user', content: msg.content },
+              ],
+            });
+            reply = result?.content || result?.message || result || 'No response from AI';
+            if (typeof reply !== 'string') reply = JSON.stringify(reply);
+          } else {
+            reply = 'AI is not available. Make sure your Flip Browser AI model is configured in Settings.';
+          }
+          // Write the AI response
+          const replyId = Date.now().toString(36) + randomHex(4);
+          await setDoc(doc(firestore, 'users', uid, 'companionAI', replyId), {
+            role: 'assistant',
+            content: reply,
+            replyTo: change.doc.id,
+            status: 'done',
+            createdAt: serverTimestamp(),
+          });
+          // Mark original as done
+          await setDoc(msgRef, { status: 'done' }, { merge: true }).catch(() => {});
+        } catch (e) {
+          // Write error response
+          const errId = Date.now().toString(36) + randomHex(4);
+          await setDoc(doc(firestore, 'users', uid, 'companionAI', errId), {
+            role: 'assistant',
+            content: 'Error: ' + (e.message || 'AI processing failed'),
+            replyTo: change.doc.id,
+            status: 'done',
+            createdAt: serverTimestamp(),
+          }).catch(() => {});
+          await setDoc(msgRef, { status: 'done' }, { merge: true }).catch(() => {});
+        }
+      });
+    });
+  } catch (e) {
+    console.error('[Companion] AI relay error:', e.message);
+  }
+}
+
+// ── Wallet Sync ─────────────────────────────────────────────────
+// Push browser wallet to Firestore so companion can see it, and vice versa.
+
+export function syncWalletToFirestore(walletData) {
+  const uid = getPairedUserId();
+  if (!uid || !walletData) return;
+  try {
+    const firestore = getDb();
+    setDoc(doc(firestore, 'users', uid, 'settings', 'wallet'), {
+      ...walletData,
+      updatedAt: serverTimestamp(),
+      source: 'browser',
+    }, { merge: true }).catch(() => {});
+  } catch {}
+}
+
 // ── Start / Stop Sync ────────────────────────────────────────────
 
 export function startSync() {
@@ -324,10 +411,13 @@ export function startSync() {
   syncTabs();
   tabSyncInterval = setInterval(syncTabs, TAB_SYNC_INTERVAL_MS);
   startCommandListener();
+  startAIRelay();
 }
 
 export function stopSync() {
   if (unsubCommands) { unsubCommands(); unsubCommands = null; }
+  if (unsubAI) { unsubAI(); unsubAI = null; }
+  if (unsubFiles) { unsubFiles(); unsubFiles = null; }
   if (tabSyncInterval) { clearInterval(tabSyncInterval); tabSyncInterval = null; }
 }
 
