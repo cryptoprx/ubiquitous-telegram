@@ -319,14 +319,46 @@ export function forwardNotification({ type = 'general', title, body }) {
 }
 
 // ── AI Relay ────────────────────────────────────────────────────
-// Companion writes user messages to Firestore → Browser picks them up,
-// processes via local AI model → writes response back.
+// Companion writes user messages to Firestore → Browser injects them into
+// the AI chat extension (full tools, system prompt, browser actions) →
+// captures streamed response → writes it back to Firestore for companion.
+
+let aiRelayPending = null; // { msgRef, docId, uid } — tracks the companion message being processed
+let aiRelayBuffer = '';    // collects streamed AI response tokens
 
 function startAIRelay() {
   const uid = getPairedUserId();
   if (!uid) return;
   try {
     const firestore = getDb();
+
+    // Listen for AI stream events to capture responses for companion
+    if (window.flipAPI?.onAiStreamToken) {
+      window.flipAPI.onAiStreamToken((token) => {
+        if (aiRelayPending) aiRelayBuffer += token;
+      });
+    }
+    if (window.flipAPI?.onAiStreamDone) {
+      window.flipAPI.onAiStreamDone(async () => {
+        if (!aiRelayPending) return;
+        const { msgRef, docId, uid: relayUid } = aiRelayPending;
+        const reply = aiRelayBuffer || 'No response from AI';
+        aiRelayPending = null;
+        aiRelayBuffer = '';
+        try {
+          const replyId = Date.now().toString(36) + randomHex(4);
+          await setDoc(doc(firestore, 'users', relayUid, 'companionAI', replyId), {
+            role: 'assistant',
+            content: reply,
+            replyTo: docId,
+            status: 'done',
+            createdAt: serverTimestamp(),
+          });
+          await setDoc(msgRef, { status: 'done' }, { merge: true }).catch(() => {});
+        } catch {}
+      });
+    }
+
     const q = query(
       collection(firestore, 'users', uid, 'companionAI'),
       orderBy('createdAt', 'desc'),
@@ -341,45 +373,25 @@ function startAIRelay() {
         if (msg.status !== 'pending' || msg.role !== 'user') return;
         // Mark as processing
         await setDoc(msgRef, { ...msg, status: 'processing' }, { merge: true }).catch(() => {});
+
+        // Track this as the active companion relay message
+        aiRelayPending = { msgRef, docId: change.doc.id, uid };
+        aiRelayBuffer = '';
+
+        // Open sidebar to AI chat extension so the message is visible
         try {
-          let reply = '';
-          if (window.flipAPI?.aiChat) {
-            // Use browser's configured local AI model
-            const result = await window.flipAPI.aiChat({
-              messages: [
-                { role: 'system', content: 'You are Flip AI, a helpful assistant. Be concise and friendly.' },
-                ...(msg.history || []).slice(-20),
-                { role: 'user', content: msg.content },
-              ],
-            });
-            reply = result?.content || result?.message || result || 'No response from AI';
-            if (typeof reply !== 'string') reply = JSON.stringify(reply);
-          } else {
-            reply = 'AI is not available. Make sure your Flip Browser AI model is configured in Settings.';
-          }
-          // Write the AI response
-          const replyId = Date.now().toString(36) + randomHex(4);
-          await setDoc(doc(firestore, 'users', uid, 'companionAI', replyId), {
-            role: 'assistant',
-            content: reply,
-            replyTo: change.doc.id,
-            status: 'done',
-            createdAt: serverTimestamp(),
-          });
-          // Mark original as done
-          await setDoc(msgRef, { status: 'done' }, { merge: true }).catch(() => {});
-        } catch (e) {
-          // Write error response
-          const errId = Date.now().toString(36) + randomHex(4);
-          await setDoc(doc(firestore, 'users', uid, 'companionAI', errId), {
-            role: 'assistant',
-            content: 'Error: ' + (e.message || 'AI processing failed'),
-            replyTo: change.doc.id,
-            status: 'done',
-            createdAt: serverTimestamp(),
-          }).catch(() => {});
-          await setDoc(msgRef, { status: 'done' }, { merge: true }).catch(() => {});
-        }
+          const store = useBrowserStore.getState();
+          if (store.setSidebarView) store.setSidebarView('extensions');
+          if (!store.sidebarOpen && store.toggleSidebar) store.toggleSidebar();
+          // Switch to AI chat extension specifically
+          window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: 'ai-chat' } }));
+        } catch {}
+
+        // Inject the message into the browser's AI chat extension
+        // The extension handles: full system prompt, tool use, browser actions, streaming
+        window.dispatchEvent(new CustomEvent('flip-ai-prompt', {
+          detail: { prompt: msg.content },
+        }));
       });
     });
   } catch (e) {

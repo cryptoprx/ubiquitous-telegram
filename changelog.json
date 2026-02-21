@@ -1,8 +1,17 @@
 {
+  "1.2.70": [
+    "File Bridge: browser now receives companion uploads and opens them automatically",
+    "Wallet: browser listens for companion wallet changes in real-time",
+    "Notifications: download started events now forwarded to companion",
+    "Browser Connected notification sent to companion on sync start",
+    "All companion features now have active browser-side listeners"
+  ],
   "1.2.69": [
-    "Forward extension notifications to companion app",
-    "Forward page change watcher alerts to companion",
-    "Encrypt wallet seed in Firestore (AES-256-GCM)"
+    "File Bridge: browser now receives companion uploads and opens them automatically",
+    "Wallet: browser listens for companion wallet changes in real-time",
+    "Notifications: download started events now forwarded to companion",
+    "Browser Connected notification sent to companion on sync start",
+    "All companion features now have active browser-side listeners"
   ],
   "1.2.68": [
     "Forward extension notifications to companion app",
