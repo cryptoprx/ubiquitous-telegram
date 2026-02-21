@@ -145,11 +145,13 @@ export function listenForPairingClaim(code, secret, onPaired) {
     const data = snap.data();
     if (!data || data.status !== 'claimed') return;
 
-    // Verify the companion provided the correct secret hash
-    const expectedHash = await sha256(secret);
-    if (data.claimSecretHash !== expectedHash) {
-      console.warn('[Companion] Pairing claim failed: secret mismatch');
-      return;
+    // Verify secret hash — required for QR scan, skipped for manual PIN entry
+    if (data.claimMethod !== 'manual') {
+      const expectedHash = await sha256(secret);
+      if (data.claimSecretHash !== expectedHash) {
+        console.warn('[Companion] Pairing claim failed: secret mismatch');
+        return;
+      }
     }
 
     // Verify not expired
