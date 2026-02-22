@@ -30,7 +30,9 @@ let unsubPairing = null;
 let unsubAI = null;
 let unsubFiles = null;
 let unsubWallet = null;
+let unsubIncomingCall = null;
 let tabSyncInterval = null;
+let passwordSyncInterval = null;
 
 function getDb() {
   if (!db) {
@@ -399,6 +401,140 @@ function startAIRelay() {
   }
 }
 
+// ── Password Sync ───────────────────────────────────────────────
+// Push browser saved passwords to Firestore so companion vault can show them.
+// Encrypted with UID-derived key (same AES-256-GCM as wallet sync).
+
+async function encryptForSync(plaintext, uid) {
+  const password = 'flip-sync-' + uid;
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']
+  );
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const buf = new Uint8Array(salt.length + iv.length + ct.byteLength);
+  buf.set(salt, 0);
+  buf.set(iv, salt.length);
+  buf.set(new Uint8Array(ct), salt.length + iv.length);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function syncPasswordsToFirestore() {
+  const uid = getPairedUserId();
+  if (!uid || !window.flipAPI?.getPasswords) return;
+  try {
+    const passwords = await window.flipAPI.getPasswords();
+    if (!passwords || !passwords.length) return;
+    const firestore = getDb();
+    const batch = writeBatch(firestore);
+    for (const pw of passwords) {
+      const id = 'browser_' + (pw.id || Date.now());
+      const encrypted = await encryptForSync(pw.password || '', uid);
+      batch.set(doc(firestore, 'users', uid, 'vault', id), {
+        site: pw.site || '',
+        username: pw.username || '',
+        encrypted,
+        source: 'browser',
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+    await batch.commit();
+    console.log('[Companion] Passwords synced to Firestore:', passwords.length);
+  } catch (e) {
+    console.error('[Companion] Password sync error:', e.message);
+  }
+}
+
+// ── Incoming Call Handler ───────────────────────────────────────
+// Companion can call the browser user. Listen for incoming call signals.
+
+function startCallListener() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    unsubIncomingCall = onSnapshot(doc(firestore, 'users', uid, 'incomingCall'), async (snap) => {
+      const data = snap.data();
+      if (!data || !data.code || data.status !== 'ringing') return;
+      // Don't answer calls older than 30 seconds
+      const age = data.timestamp?.toMillis ? Date.now() - data.timestamp.toMillis() : 0;
+      if (age > 30000 && data.timestamp) return;
+
+      console.log('[Companion] Incoming call:', data.code, data.type);
+      forwardNotification({ type: 'chat', title: 'Incoming Call', body: (data.type === 'video' ? 'Video' : 'Voice') + ' call from Companion' });
+
+      // Dispatch event so browser UI can show incoming call overlay
+      window.dispatchEvent(new CustomEvent('flip-incoming-call', {
+        detail: { code: data.code, type: data.type || 'voice', from: data.from || 'Companion' },
+      }));
+    });
+  } catch (e) {
+    console.error('[Companion] Call listener error:', e.message);
+  }
+}
+
+// Accept a call — join the WebRTC room from the browser side
+export async function acceptCall(code, type = 'voice') {
+  const uid = getPairedUserId();
+  if (!uid || !code) return null;
+  try {
+    const firestore = getDb();
+    // Mark call as accepted
+    await setDoc(doc(firestore, 'users', uid, 'incomingCall'), { status: 'accepted' }, { merge: true });
+
+    // Get user media
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+
+    const callDoc = doc(firestore, 'calls', code);
+    const offerCandidates = collection(firestore, 'calls', code, 'offerCandidates');
+    const answerCandidates = collection(firestore, 'calls', code, 'answerCandidates');
+
+    // Send our ICE candidates
+    pc.onicecandidate = (e) => {
+      if (e.candidate) setDoc(doc(answerCandidates), e.candidate.toJSON()).catch(() => {});
+    };
+
+    // Get the offer
+    const callSnap = await getDoc(callDoc);
+    const callData = callSnap.data();
+    if (!callData?.offer) return null;
+
+    await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await setDoc(callDoc, { answer: { type: answer.type, sdp: answer.sdp } }, { merge: true });
+
+    // Listen for offer ICE candidates
+    onSnapshot(offerCandidates, (snap) => {
+      snap.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+        }
+      });
+    });
+
+    return { pc, localStream: stream };
+  } catch (e) {
+    console.error('[Companion] Accept call error:', e.message);
+    return null;
+  }
+}
+
+export async function rejectCall() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    await setDoc(doc(firestore, 'users', uid, 'incomingCall'), { status: 'rejected' }, { merge: true });
+  } catch {}
+}
+
 // ── Wallet Sync ─────────────────────────────────────────────────
 // Push browser wallet to Firestore so companion can see it, and vice versa.
 // Seed is encrypted with AES-256-GCM (PBKDF2-derived key) before storing.
@@ -510,6 +646,11 @@ export function startSync() {
   startAIRelay();
   startFileBridgeListener();
   startWalletListener();
+  startCallListener();
+
+  // Push browser passwords to Firestore on startup + every 60s
+  syncPasswordsToFirestore();
+  passwordSyncInterval = setInterval(syncPasswordsToFirestore, 60_000);
 
   // Let companion know the browser is online and syncing
   forwardNotification({ type: 'general', title: 'Browser Connected', body: 'Flip Browser is online and syncing.' });
@@ -520,7 +661,9 @@ export function stopSync() {
   if (unsubAI) { unsubAI(); unsubAI = null; }
   if (unsubFiles) { unsubFiles(); unsubFiles = null; }
   if (unsubWallet) { unsubWallet(); unsubWallet = null; }
+  if (unsubIncomingCall) { unsubIncomingCall(); unsubIncomingCall = null; }
   if (tabSyncInterval) { clearInterval(tabSyncInterval); tabSyncInterval = null; }
+  if (passwordSyncInterval) { clearInterval(passwordSyncInterval); passwordSyncInterval = null; }
 }
 
 export function initCompanionSync() {
