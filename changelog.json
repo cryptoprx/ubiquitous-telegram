@@ -1,9 +1,15 @@
 {
+  "1.2.72": [
+    "Companion sync: browser passwords now push to Firestore vault for companion access",
+    "Companion sync: incoming call handler - accept/reject calls from companion app",
+    "Companion sync: full-screen call UI overlay with WebRTC video/audio",
+    "Companion sync: password sync runs on startup + every 60s"
+  ],
   "1.2.71": [
-    "AI relay: companion messages now appear in browser AI chat panel",
-    "AI relay: full browser tool use (open tabs, navigate, etc.) from companion",
-    "AI relay: sidebar auto-opens to AI chat when companion sends a message",
-    "AI relay: streamed responses captured and sent back to companion in real-time"
+    "Companion sync: browser passwords now push to Firestore vault for companion access",
+    "Companion sync: incoming call handler - accept/reject calls from companion app",
+    "Companion sync: full-screen call UI overlay with WebRTC video/audio",
+    "Companion sync: password sync runs on startup + every 60s"
   ],
   "1.2.70": [
     "AI relay: companion messages now appear in browser AI chat panel",

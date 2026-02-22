@@ -389,11 +389,13 @@ function startAIRelay() {
           window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: 'ai-chat' } }));
         } catch {}
 
-        // Inject the message into the browser's AI chat extension
-        // The extension handles: full system prompt, tool use, browser actions, streaming
-        window.dispatchEvent(new CustomEvent('flip-ai-prompt', {
-          detail: { prompt: msg.content },
-        }));
+        // Inject the message into the browser's AI chat extension after a short
+        // delay to ensure the extension iframe has mounted and registered its listener
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('flip-ai-prompt', {
+            detail: { prompt: msg.content },
+          }));
+        }, 1200);
       });
     });
   } catch (e) {

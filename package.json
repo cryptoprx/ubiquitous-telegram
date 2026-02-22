@@ -1,6 +1,6 @@
 {
   "name": "flip-browser",
-  "version": "1.2.71",
+  "version": "1.2.72",
   "description": "Flip Browser — A blazing-fast, privacy-first browser with React extensions",
   "author": "CROAKWORKS <admin@croak.work> (https://croak.work)",
   "main": "electron/main.js",
