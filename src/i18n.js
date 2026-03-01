@@ -15,6 +15,7 @@ const translations = {
     profiles: 'Profiles',
     readerSettings: 'Reader',
     siteSettings: 'Site Settings',
+    aiChat: 'AI Chat',
     extensions: 'Extensions',
     settings: 'Settings',
 
@@ -105,6 +106,7 @@ const translations = {
     profiles: 'Perfiles',
     readerSettings: 'Lector',
     siteSettings: 'Sitios',
+    aiChat: 'Chat IA',
     extensions: 'Extensiones',
     settings: 'Configuración',
 

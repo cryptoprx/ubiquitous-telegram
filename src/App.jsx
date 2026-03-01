@@ -13,6 +13,9 @@ import DevDashboard from './components/extensions/DevDashboard';
 import BookmarksBar from './components/BookmarksBar';
 import Marketplace from './components/Marketplace';
 import LicenseGate from './components/LicenseGate';
+import X402PaymentPrompt from './components/X402PaymentPrompt';
+import AiOverlay from './components/AiOverlay';
+import ExtensionStudio from './pages/ExtensionStudio';
 import { initCompanionSync, forwardNotification, acceptCall, rejectCall } from './lib/companionSync';
 
 export default function App() {
@@ -192,17 +195,39 @@ export default function App() {
 
   // Persist pinned tabs and session when tabs change (skip in private mode)
   const isPrivateMode = new URLSearchParams(window.location.search).get('private') === '1';
+  const saveSessionSnapshot = useCallback(() => {
+    if (!window.flipAPI || isPrivateMode) return;
+    const state = useBrowserStore.getState();
+    const pinned = state.tabs.filter((t) => t.pinned).map(({ url, title, favicon }) => ({ url, title, favicon }));
+    window.flipAPI.savePinnedTabs(pinned);
+    const sessionTabs = state.tabs
+      .filter((t) => !t.pinned && !t.isSplitTab && t.url !== 'flip://newtab')
+      .map(({ url, title, favicon }) => ({ url, title, favicon }));
+    window.flipAPI.saveSession(sessionTabs);
+  }, [isPrivateMode]);
+
   useEffect(() => {
-    if (window.flipAPI && !isPrivateMode) {
-      const pinned = tabs.filter((t) => t.pinned).map(({ url, title, favicon }) => ({ url, title, favicon }));
-      window.flipAPI.savePinnedTabs(pinned);
-      // Save session (all non-pinned, non-split, non-newtab tabs)
-      const sessionTabs = tabs
-        .filter((t) => !t.pinned && !t.isSplitTab && t.url !== 'flip://newtab')
-        .map(({ url, title, favicon }) => ({ url, title, favicon }));
-      window.flipAPI.saveSession(sessionTabs);
-    }
+    saveSessionSnapshot();
   }, [tabs]);
+
+  // Auto-save session every 30s for crash recovery + auto-suspend inactive tabs every 60s
+  useEffect(() => {
+    if (isPrivateMode) return;
+    const interval = setInterval(saveSessionSnapshot, 30000);
+    const suspendInterval = setInterval(() => {
+      const s = useBrowserStore.getState().settings;
+      if (s.autoSuspendEnabled !== false) {
+        useBrowserStore.getState().autoSuspendInactiveTabs(s.autoSuspendMinutes || 30);
+      }
+    }, 60000);
+    const handleUnload = () => saveSessionSnapshot();
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      clearInterval(interval);
+      clearInterval(suspendInterval);
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [saveSessionSnapshot]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -253,6 +278,13 @@ export default function App() {
         e.preventDefault();
         window.flipAPI?.newPrivateWindow?.();
       }
+      // Ctrl+Alt+1-9 — Switch workspace
+      if (e.ctrlKey && e.altKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const idx = parseInt(e.key) - 1;
+        const ws = useBrowserStore.getState().workspaces;
+        if (ws[idx]) useBrowserStore.getState().switchWorkspace(ws[idx].id);
+      }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -261,6 +293,7 @@ export default function App() {
   const isNewTab = activeTab?.url === 'flip://newtab';
   const isDevTools = activeTab?.url === 'flip://devtools';
   const isMarketplace = activeTab?.url === 'flip://marketplace';
+  const isStudio = activeTab?.url === 'flip://studio';
   const isExtTab = activeTab?.url?.startsWith('flip://ext/');
   const extTabId = isExtTab ? activeTab.url.replace('flip://ext/', '') : null;
   const showExtensionPanel = sidebarView === 'extensions';
@@ -324,6 +357,8 @@ export default function App() {
             <div className="flex flex-col flex-1 min-w-0 relative">
               {isDevTools ? (
                 <DevDashboard />
+              ) : isStudio ? (
+                <ExtensionStudio />
               ) : isMarketplace ? (
                 <Marketplace />
               ) : isNewTab ? (
@@ -369,6 +404,12 @@ export default function App() {
 
       {/* Incoming call overlay */}
       <IncomingCallOverlay />
+
+      {/* x402 Payment prompt overlay */}
+      <X402PaymentPrompt />
+
+      {/* AI floating overlay for context menu actions */}
+      <AiOverlay />
     </div>
   );
 }

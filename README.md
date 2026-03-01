@@ -1,175 +1,96 @@
 # Flip Browser
 
-A blazing-fast, privacy-first web browser built with Electron + React, featuring a React-based extension system and a distinctive warm coral & teal design language.
+A privacy-first web browser built with Electron and React, featuring a sandboxed React extension system, built-in ad/tracker blocking, and companion app integration.
 
 ## Features
 
-### Core Browser
-- **Chromium-based rendering** via Electron — full web compatibility
-- **Cross-platform** — Windows and macOS support
-- **Original frameless UI** with warm coral/teal accent design, glassmorphism, and flip animations
+- Vertical sidebar tabs with domain grouping, search, and auto-suspension
+- Built-in ad blocker (EasyList + EasyPrivacy, 143K+ filters) and tracking parameter stripping
+- AI assistant with streaming, tool use, and page-aware context
+- Sandboxed React extension system with permission enforcement
+- Extension marketplace with premium support via Stripe
+- Companion app sync (tabs, passwords, notifications, AI relay, calls)
+- Workspaces, session manager, command palette, split view
+- XRPL wallet integration with x402 micropayment support
 
-### Addressing Top Browser Complaints
-- **Tab Overload** → Vertical sidebar tabs with search, pinning, grouping, and tab suspension
-- **Privacy** → Built-in ad/tracker blocker, no telemetry, tracking header removal
-- **Memory Hogging** → Automatic tab suspension for inactive tabs
-- **Bloated UI** → Clean, minimal interface with collapsible sidebar
-- **Slow Navigation** → Command Palette (Ctrl+K) for instant tab/bookmark/action search
-- **No Split View** → Side-by-side browsing with split view
+## Prerequisites
 
-### React Extension System
-Extensions are **React apps** that run sandboxed inside Flip Browser:
-- Extensions are built with standard React (JSX)
-- Each extension has a `manifest.json` + `App.jsx`
-- Extensions run in sandboxed iframes with their own React instance
-- Communication via the **Flip Extension API** (`window.Flip`)
-- Permission-based access to tabs, storage, and UI
-
-## Getting Started
-
-### Prerequisites
 - Node.js 18+
-- npm or yarn
+- npm
 
-### Install & Run
+## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Run in development mode
 npm run dev
 ```
 
-### Build for Production
+## Build
 
 ```bash
-# Build and package
 npm run build
 ```
+
+## Publish
+
+```bash
+npm run publish
+```
+
+Requires `GH_TOKEN` in `.env`. See `scripts/publish.js` for the full pipeline.
 
 ## Project Structure
 
 ```
-br/
-├── electron/           # Electron main process
-│   ├── main.js         # App entry, window management, ad blocker, IPC
-│   └── preload.js      # Context bridge (flipAPI)
+├── electron/
+│   ├── main.js            # Main process, IPC handlers, AI, extensions
+│   ├── preload.js         # Context bridge (flipAPI)
+│   ├── adblock.js         # Ad/tracker blocking engine
+│   └── wallet.js          # XRPL wallet operations
 ├── src/
-│   ├── main.jsx        # React entry point
-│   ├── index.css       # Global styles (Tailwind)
-│   ├── App.jsx         # Root component
+│   ├── App.jsx            # Root layout and routing
+│   ├── main.jsx           # Entry point
+│   ├── i18n.js            # Internationalization
+│   ├── index.css          # Global styles
 │   ├── store/
-│   │   └── browserStore.js  # Zustand state management
-│   └── components/
-│       ├── TitleBar.jsx          # Custom title bar with Flip branding
-│       ├── Sidebar.jsx           # Vertical tabs, bookmarks, history, settings
-│       ├── AddressBar.jsx        # URL bar, navigation, security indicator
-│       ├── WebContent.jsx        # Webview manager (multi-tab)
-│       ├── CommandPalette.jsx    # Quick-action search (Ctrl+K)
-│       ├── NewTabPage.jsx        # New tab dashboard with Flip identity
-│       └── extensions/
-│           ├── ExtensionManager.jsx  # Install/manage extensions
-│           ├── ExtensionHost.jsx     # Sandboxed extension runtime
-│           └── ExtensionPanel.jsx    # Extension sidebar panel
-├── extensions/         # Installed extensions
-│   ├── sample-weather/ # Weather widget demo extension
-│   └── sample-notes/   # Notes app demo extension
-└── package.json
+│   │   └── browserStore.js
+│   ├── lib/
+│   │   └── companionSync.js
+│   ├── components/
+│   │   ├── TitleBar.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── AddressBar.jsx
+│   │   ├── WebContent.jsx
+│   │   ├── NewTabPage.jsx
+│   │   ├── CommandPalette.jsx
+│   │   ├── Marketplace.jsx
+│   │   ├── AiOverlay.jsx
+│   │   ├── AiTabAssistant.jsx
+│   │   ├── LicenseGate.jsx
+│   │   ├── X402PaymentPrompt.jsx
+│   │   └── extensions/
+│   │       ├── ExtensionHost.jsx
+│   │       ├── ExtensionManager.jsx
+│   │       ├── ExtensionPanel.jsx
+│   │       └── DevDashboard.jsx
+│   └── pages/
+│       └── ExtensionStudio.jsx
+├── extensions/            # Bundled extensions
+├── scripts/               # Build, publish, and CI tooling
+├── docs/                  # Whitepaper, build guides
+└── public/                # Static assets
 ```
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+K` | Open Command Palette |
-| `Ctrl+T` | New Tab |
-| `Ctrl+W` | Close Tab |
-| `Ctrl+L` | Focus Address Bar |
-
-## Creating Extensions
-
-### Extension Structure
-
-```
-my-extension/
-├── manifest.json
-└── App.jsx
-```
-
-### manifest.json
-
-```json
-{
-  "name": "My Extension",
-  "version": "1.0.0",
-  "description": "What this extension does",
-  "author": "Your Name",
-  "type": "sidebar",
-  "main": "App.jsx",
-  "permissions": ["tabs", "storage"],
-  "api_version": "1.0"
-}
-```
-
-### App.jsx
-
-```jsx
-function App() {
-  const [tabs, setTabs] = React.useState([]);
-
-  React.useEffect(() => {
-    // Use the Flip Extension API
-    Flip.tabs.getAll().then(setTabs);
-  }, []);
-
-  return (
-    <div>
-      <h2>My Extension</h2>
-      <p>Open tabs: {tabs.length}</p>
-      <button onClick={() => Flip.tabs.create('https://example.com')}>
-        Open Example
-      </button>
-    </div>
-  );
-}
-```
-
-### Flip Extension API
-
-```js
-// Tabs
-Flip.tabs.getAll()              // Get all open tabs
-Flip.tabs.getActive()           // Get active tab
-Flip.tabs.create(url)           // Open new tab
-Flip.tabs.close(tabId)          // Close a tab
-Flip.tabs.navigate(tabId, url)  // Navigate a tab
-
-// Storage (per-extension, persistent)
-Flip.storage.get(key)           // Get stored value
-Flip.storage.set(key, value)    // Store value
-
-// UI
-Flip.ui.showNotification(msg)   // Show notification
-Flip.ui.setBadge(text)          // Set badge text
-```
-
-### Installing Extensions
-
-1. Click the **Extensions** icon in the sidebar
-2. Click **"Install Extension from Folder"**
-3. Select the folder containing your `manifest.json`
-4. The extension loads immediately
 
 ## Tech Stack
 
-- **Electron 28** — Chromium rendering engine
-- **React 18** — UI framework
-- **Vite 5** — Build tool
-- **TailwindCSS 3** — Styling (warm coral/teal design system)
+- **Electron 28** — Chromium rendering
+- **React 18** — UI
+- **Vite 5** — Build tooling
+- **TailwindCSS 3** — Styling
 - **Zustand** — State management
+- **Firebase** — Companion app sync
 - **Lucide React** — Icons
 
 ## License
 
-MIT
+Proprietary — see [LICENSE](./LICENSE).

@@ -4,14 +4,24 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+const wallet = require('./wallet');
+const adblock = require('./adblock');
 const isDev = process.env.NODE_ENV === 'development';
+
+// Suppress Electron security warnings in development (unsafe-eval is required by Monaco + Vite HMR)
+if (isDev) process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+
+// Suppress noisy GUEST_VIEW_MANAGER_CALL errors (ERR_ABORTED -3) from webview navigation cancellations
+process.on('unhandledRejection', (reason) => {
+  if (reason && reason.errno === -3) return; // ERR_ABORTED — normal during navigation
+  console.error('[UnhandledRejection]', reason);
+});
 
 // Register flip-music:// protocol scheme (must be before app.ready)
 protocol.registerSchemesAsPrivileged([
   { scheme: 'flip-music', privileges: { stream: true, supportFetchAPI: true, bypassCSP: true } },
 ]);
 
-// ── Runtime Integrity Check (production only) ───────────────────
 function verifyIntegrity() {
   if (!app.isPackaged) return true;
   try {
@@ -239,6 +249,36 @@ function isDomainBlocked(hostname, blockedSet) {
   return false;
 }
 
+// Strip known tracking query parameters from URLs
+const TRACKING_PARAMS = new Set([
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_name', 'utm_cid',
+  'utm_reader', 'utm_viz_id', 'utm_pubreferrer', 'utm_swu', 'utm_brand',
+  'fbclid', 'gclid', 'gclsrc', 'dclid', 'gbraid', 'wbraid',
+  'msclkid', 'twclid', 'li_fat_id', 'igshid', 'mc_cid', 'mc_eid',
+  '_ga', '_gl', '_hsenc', '_hsmi', '_openstat',
+  'yclid', 'ymclid', 'oly_anon_id', 'oly_enc_id',
+  'vero_conv', 'vero_id', 'wickedid', 'mkt_tok',
+  'epik', 'pp', 'ref_', 'ref_src', 'ref_url',
+  'rb_clickid', 'spm', 'scm', 's_kwcid', 'ef_id',
+  'trk', 'trkCampaign', 'trkInfo',
+]);
+
+function stripTrackingParams(url) {
+  try {
+    const u = new URL(url);
+    let changed = false;
+    for (const key of [...u.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key) || key.startsWith('utm_') || key.startsWith('__hs') || key.startsWith('mc_')) {
+        u.searchParams.delete(key);
+        changed = true;
+      }
+    }
+    return changed ? u.toString() : url;
+  } catch {
+    return url;
+  }
+}
+
 // Check if URL path matches pattern-based rules
 function isPathBlocked(url) {
   const pathPatterns = [
@@ -296,10 +336,11 @@ function createWindow() {
   // Permission check handler — Electron 28+ calls this for synchronous permission checks.
   // Must return true so setPermissionRequestHandler fires for media permissions.
   session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
-    console.log('[PermCheck]', permission, 'origin:', requestingOrigin, 'wcId:', webContents?.id, 'mainId:', mainWindow?.webContents?.id);
+    // Silenced verbose log — uncomment for debugging:
+    // console.log('[PermCheck]', permission, 'origin:', requestingOrigin, 'wcId:', webContents?.id, 'mainId:', mainWindow?.webContents?.id);
     // If request comes from the main window (where extension iframes live), always allow
     if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
-      console.log('[PermCheck] ALLOW — main window webContents');
+      // console.log('[PermCheck] ALLOW — main window webContents');
       return true;
     }
     // Always allow safe permissions
@@ -321,7 +362,7 @@ function createWindow() {
   session.defaultSession.setDevicePermissionHandler((details) => true);
 
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    console.log('[PermReq]', permission, 'url:', webContents?.getURL()?.slice(0, 60), 'wcId:', webContents?.id, 'mainId:', mainWindow?.webContents?.id);
+    // console.log('[PermReq]', permission, 'url:', webContents?.getURL()?.slice(0, 60), 'wcId:', webContents?.id, 'mainId:', mainWindow?.webContents?.id);
     // If request comes from the main window (extension iframes), auto-allow
     if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
       console.log('[PermReq] ALLOW — main window webContents');
@@ -425,12 +466,23 @@ function setupAdBlocker() {
       }
     }
 
+    // Strip tracking query parameters (utm_*, fbclid, gclid, etc.)
+    if (trackingProtectionEnabled && details.url.includes('?')) {
+      const stripped = stripTrackingParams(details.url);
+      if (stripped !== details.url) {
+        return callback({ redirectURL: stripped });
+      }
+    }
+
     let blocked = false;
     let reason = '';
 
-    // Ad blocking
+    // Ad blocking — enhanced filter engine first, then fallback to hardcoded lists
     if (adBlockEnabled) {
-      if (isDomainBlocked(hostname, AD_DOMAINS)) {
+      if (adblock.shouldBlock(details.url, details.referrer || details.url)) {
+        blocked = true;
+        reason = 'filter-list';
+      } else if (isDomainBlocked(hostname, AD_DOMAINS)) {
         blocked = true;
         reason = 'ad-domain';
       } else if (isPathBlocked(details.url)) {
@@ -501,13 +553,14 @@ function setupAdBlocker() {
     if (!isDev && details.url.startsWith('file://')) {
       headers['Content-Security-Policy'] = [
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; " +
-        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com blob:; " +
+        "style-src 'self' 'unsafe-inline' https://unpkg.com; " +
         "img-src 'self' data: https: http:; " +
         "font-src 'self' data: https:; " +
         "connect-src 'self' https: http: ws: wss:; " +
         "media-src 'self' https: http:; " +
         "frame-src 'self' https: http:; " +
+        "worker-src 'self' blob:; " +
         "object-src 'none'; " +
         "base-uri 'self';"
       ];
@@ -522,9 +575,128 @@ function setupAdBlocker() {
       }
     }
 
+    if (details.statusCode === 402) {
+      // Parse x402 payment headers (per x402 spec)
+      const paymentHeader =
+        headers['x-payment'] || headers['X-Payment'] ||
+        headers['payment-required'] || headers['Payment-Required'] ||
+        headers['x-payment-required'] || headers['X-Payment-Required'];
+
+      if (paymentHeader) {
+        try {
+          // Parse JSON from header value (may be array with single element)
+          const raw = Array.isArray(paymentHeader) ? paymentHeader[0] : paymentHeader;
+          const paymentReqs = JSON.parse(raw);
+          const req = Array.isArray(paymentReqs) ? paymentReqs[0] : paymentReqs;
+
+          // Build payment request info for the UI
+          const paymentInfo = {
+            id: ++x402PaymentIdCounter,
+            url: details.url,
+            hostname: getHostname(details.url),
+            price: req.maxAmountRequired || req.price || req.amount || '0',
+            asset: req.asset || req.token || 'USDC',
+            network: req.network || `eip155:8453`,
+            payTo: req.payToAddress || req.payTo || req.recipient || '',
+            description: req.description || req.resource || '',
+            scheme: req.scheme || 'exact',
+            extra: req.extra || {},
+            rawRequirement: req,
+          };
+
+          // Notify the renderer to show a payment prompt
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            pendingX402Callbacks[paymentInfo.id] = { paymentInfo, url: details.url };
+            mainWindow.webContents.send('x402-payment-request', paymentInfo);
+          }
+        } catch (e) {
+          console.error('[x402] Failed to parse payment header:', e.message);
+        }
+      }
+    }
+
     callback({ responseHeaders: headers });
   });
 }
+
+let x402PaymentIdCounter = 0;
+const pendingX402Callbacks = {};
+const FLIP_PLATFORM_FEE = 0.02; // 2% platform fee
+const FLIP_TREASURY_ADDRESS = '0x9F894D4d1aFCfcDF45008edBe5D32e75f68601CA';
+
+ipcMain.handle('respond-x402-payment', async (_, id, approved) => {
+  const pending = pendingX402Callbacks[id];
+  if (!pending) return { error: 'No pending payment' };
+  delete pendingX402Callbacks[id];
+
+  if (!approved) return { cancelled: true };
+
+  try {
+    const { paymentInfo, url } = pending;
+
+    // Calculate platform fee (2%) on top of the content price
+    const rawPrice = parseFloat(paymentInfo.price.replace('$', '')) || 0;
+    const feeAmount = +(rawPrice * FLIP_PLATFORM_FEE).toFixed(6);
+    const totalPrice = +(rawPrice + feeAmount).toFixed(6);
+    const testnet = paymentInfo.network?.includes('84532');
+
+    // 1) Sign the content payment to the resource server (original price)
+    const signResult = await wallet.signX402Payment({
+      price: rawPrice.toString(),
+      payTo: paymentInfo.payTo,
+      network: paymentInfo.network,
+    });
+
+    if (signResult.error) return { error: signResult.error };
+
+    // 2) Send the 2% platform fee to the Flip treasury (fire-and-forget)
+    if (feeAmount > 0 && FLIP_TREASURY_ADDRESS) {
+      wallet.sendUsdc(FLIP_TREASURY_ADDRESS, feeAmount.toString(), testnet)
+        .then(r => {
+          if (r?.success) {
+            wallet.addTxRecord({
+              id: Date.now(),
+              type: 'x402-fee',
+              to: FLIP_TREASURY_ADDRESS,
+              amount: feeAmount.toString(),
+              asset: 'USDC',
+              site: paymentInfo.hostname,
+              network: paymentInfo.network,
+              timestamp: Date.now(),
+            });
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Record the content transaction
+    wallet.addTxRecord({
+      id: Date.now(),
+      type: 'x402',
+      to: paymentInfo.payTo,
+      amount: rawPrice.toString(),
+      fee: feeAmount.toString(),
+      total: totalPrice.toString(),
+      asset: paymentInfo.asset || 'USDC',
+      site: paymentInfo.hostname,
+      url: paymentInfo.url,
+      network: paymentInfo.network,
+      timestamp: Date.now(),
+    });
+
+    // Return the signed payment so the renderer can retry with the header
+    return {
+      success: true,
+      url: url,
+      paymentSignature: JSON.stringify(signResult.payload),
+      paymentInfo,
+      fee: feeAmount,
+      total: totalPrice,
+    };
+  } catch (e) {
+    return { error: e.message };
+  }
+});
 
 // IPC Handlers
 
@@ -606,7 +778,21 @@ ipcMain.handle('new-private-window', () => {
 });
 
 // Extensions: default-on for first launch
-const DEFAULT_ENABLED_EXTENSIONS = ['community-chat'];
+const DEFAULT_ENABLED_EXTENSIONS = [
+  'community-chat',
+  'calendar-widget',
+  'sample-weather',
+  'security-dashboard',
+  'privacy-dashboard',
+];
+
+// Preset marketplace extensions — auto-installed on first launch so users get a useful starter set
+const PRESET_MARKETPLACE_EXTENSIONS = [
+  'calendar-widget',
+  'sample-weather',
+  'security-dashboard',
+  'privacy-dashboard',
+];
 
 // Allowed popup URLs from extension manifests (populated on load-extensions)
 const allowedPopupUrls = new Set();
@@ -666,6 +852,46 @@ ipcMain.handle('load-extensions', async () => {
     const extensions = [];
     allowedPopupUrls.clear();
 
+    // 0. Auto-install preset marketplace extensions on first launch
+    const presetFlag = path.join(dataDir, '.presets-installed');
+    if (!fs.existsSync(presetFlag)) {
+      console.log('[Extensions] First launch — auto-installing preset marketplace extensions');
+      for (const presetId of PRESET_MARKETPLACE_EXTENSIONS) {
+        const destDir = path.join(getInstalledExtDir(), presetId);
+        if (fs.existsSync(destDir)) continue; // already installed
+        try {
+          // Try remote download from marketplace
+          if (MARKETPLACE_URL) {
+            const manifestResp = await fetch(`${MARKETPLACE_URL}/${presetId}/manifest.json`, { signal: AbortSignal.timeout(8000) });
+            if (manifestResp.ok) {
+              const manifestText = await manifestResp.text();
+              const manifest = JSON.parse(manifestText);
+              const mainFile = manifest.main || 'App.jsx';
+              const mainResp = await fetch(`${MARKETPLACE_URL}/${presetId}/${mainFile}`, { signal: AbortSignal.timeout(8000) });
+              if (mainResp.ok) {
+                fs.mkdirSync(destDir, { recursive: true });
+                fs.writeFileSync(path.join(destDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+                fs.writeFileSync(path.join(destDir, mainFile), await mainResp.text());
+                // Enable by default
+                if (!savedStates) savedStates = {};
+                savedStates[presetId] = true;
+                console.log(`[Extensions] Preset installed: ${presetId}`);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`[Extensions] Failed to auto-install preset ${presetId}:`, e.message);
+        }
+      }
+      // Save enabled states for presets
+      if (savedStates) {
+        const extStateFile2 = path.join(dataDir, 'extension-states.json');
+        try { encryptedWrite(extStateFile2, savedStates); } catch {}
+      }
+      // Mark presets as installed so we don't repeat
+      try { fs.writeFileSync(presetFlag, new Date().toISOString()); } catch {}
+    }
+
     // 1. Load bundled extensions (community-chat + any that ship with the app)
     if (fs.existsSync(bundledDir)) {
       const dirs = fs.readdirSync(bundledDir, { withFileTypes: true })
@@ -718,7 +944,6 @@ ipcMain.handle('load-extensions', async () => {
   }
 });
 
-// ── Marketplace ─────────────────────────────────────────────────
 
 // Fetch marketplace catalog (merge local + remote so local dev extensions always appear)
 ipcMain.handle('marketplace-catalog', async () => {
@@ -786,7 +1011,6 @@ ipcMain.handle('marketplace-install', async (_, extId) => {
   try {
     if (!extId || !/^[a-zA-Z0-9_-]+$/.test(extId)) return { error: 'Invalid extension ID' };
 
-    // ── Security: Approval gate — check both local + remote catalogs ──
     let allExts = [];
     try {
       // Check local catalog
@@ -839,7 +1063,6 @@ ipcMain.handle('marketplace-install', async (_, extId) => {
       const manifestText = await manifestResp.text();
       const manifest = JSON.parse(manifestText);
 
-      // ── Security: Verify manifest hash before writing ──
       const entry = allExts.find(e => e.id === extId);
       if (entry?.manifestHash && !verifyExtensionHash(manifestText, entry.manifestHash)) {
         console.error(`[Marketplace Security] REJECTED ${extId} — manifest hash mismatch`);
@@ -852,7 +1075,6 @@ ipcMain.handle('marketplace-install', async (_, extId) => {
       if (!mainResp.ok) return { error: 'Failed to download extension code' };
       const mainContent = await mainResp.text();
 
-      // ── Security: Verify main file hash before writing ──
       if (entry?.hash && !verifyExtensionHash(mainContent, entry.hash)) {
         console.error(`[Marketplace Security] REJECTED ${extId} — code hash mismatch`);
         return { error: 'Extension integrity check failed — code has been tampered with.' };
@@ -920,14 +1142,12 @@ ipcMain.handle('marketplace-uninstall', async (_, extId) => {
   }
 });
 
-// ── Security: SHA-256 hash verification for extension code ──────
 function verifyExtensionHash(content, expectedHash) {
   if (!expectedHash) return true; // No hash in catalog = legacy extension, allow
   const actual = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
   return actual === expectedHash;
 }
 
-// ── Extension Auto-Update ───────────────────────────────────────
 // On startup, check marketplace for newer versions of installed extensions
 // and silently update them in the background.
 async function autoUpdateExtensions() {
@@ -977,7 +1197,6 @@ async function autoUpdateExtensions() {
         const newManifestText = await manifestResp.text();
         const newManifest = JSON.parse(newManifestText);
 
-        // ── Security: Verify manifest hash ──
         if (catalogEntry.manifestHash && !verifyExtensionHash(newManifestText, catalogEntry.manifestHash)) {
           console.error(`[ExtUpdate] REJECTED ${extId} — manifest hash mismatch (possible tampering)`);
           continue;
@@ -989,7 +1208,6 @@ async function autoUpdateExtensions() {
         if (!mainResp.ok) continue;
         const mainContent = await mainResp.text();
 
-        // ── Security: Verify main file hash ──
         if (!verifyExtensionHash(mainContent, catalogEntry.hash)) {
           console.error(`[ExtUpdate] REJECTED ${extId} — code hash mismatch (possible tampering)`);
           continue;
@@ -1024,7 +1242,6 @@ async function autoUpdateExtensions() {
   }
 }
 
-// ── Filesystem API for extensions (sandboxed to safe public folders) ──
 const os = require('os');
 
 // Only these folders are accessible — block everything else
@@ -1185,7 +1402,6 @@ ipcMain.handle('ext-fs-disk-usage', async () => {
   }
 });
 
-// ── Security API for extensions ──────────────────────────────────
 const { exec: execCb } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(execCb);
@@ -1350,7 +1566,6 @@ ipcMain.handle('ext-security-scan', async () => {
   }
 });
 
-// ── Premium Extensions: Entitlement check ───────────────────────
 const PORTAL_API = 'https://flip-dev-portal-nine.vercel.app';
 let cachedEntitlements = null;
 let entitlementsCacheTime = 0;
@@ -1427,65 +1642,10 @@ ipcMain.handle('save-extension-states', (_, states) => {
   }
 });
 
-// Install extension from folder
+// Install extension from folder — PAUSED (use marketplace instead)
 ipcMain.handle('install-extension', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Install React Extension',
-    properties: ['openDirectory'],
-    message: 'Select the extension folder (must contain manifest.json)',
-  });
-
-  if (result.canceled || result.filePaths.length === 0) return null;
-
-  const srcDir = result.filePaths[0];
-  const manifestPath = path.join(srcDir, 'manifest.json');
-
-  if (!fs.existsSync(manifestPath)) {
-    return { error: 'No manifest.json found in selected folder' };
-  }
-
-  try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-    const extName = manifest.id || path.basename(srcDir);
-    const destDir = path.join(__dirname, '..', 'extensions', extName);
-
-    // Copy extension files
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    copyDirSync(srcDir, destDir);
-
-    const mainFile = path.join(destDir, manifest.main || 'App.jsx');
-    let sourceCode = '';
-    if (fs.existsSync(mainFile)) {
-      sourceCode = fs.readFileSync(mainFile, 'utf-8');
-    }
-
-    return {
-      id: extName,
-      manifest,
-      sourceCode,
-      path: destDir,
-      enabled: true,
-    };
-  } catch (e) {
-    return { error: e.message };
-  }
+  return { error: 'Extension importing from folder is currently disabled. Install extensions from the Marketplace instead.' };
 });
-
-function copyDirSync(src, dest) {
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      if (!fs.existsSync(destPath)) fs.mkdirSync(destPath, { recursive: true });
-      copyDirSync(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
 
 // Create extension from Developer Dashboard
 ipcMain.handle('create-extension', async (_, { id, manifest, sourceCode }) => {
@@ -1525,7 +1685,6 @@ ipcMain.handle('create-extension', async (_, { id, manifest, sourceCode }) => {
   }
 });
 
-// ── Extension Fetch (bypass CORS for extensions with network permission) ─────
 ipcMain.handle('ext-fetch-url', async (_, url, options = {}) => {
   try {
     if (!url || typeof url !== 'string') return { error: 'Invalid URL' };
@@ -1556,7 +1715,6 @@ ipcMain.handle('ext-fetch-url', async (_, url, options = {}) => {
   }
 });
 
-// ── Extension File Save (save base64 data to Downloads folder) ───────────────
 ipcMain.handle('ext-save-file', async (_, { base64, filename, source }) => {
   try {
     if (!base64 || !filename) return { error: 'Missing data or filename' };
@@ -1602,7 +1760,6 @@ ipcMain.handle('ext-save-file', async (_, { base64, filename, source }) => {
   }
 });
 
-// ── VPN / Proxy ─────────────────────────────────────────────────
 let proxyActive = false;
 
 ipcMain.handle('set-proxy', async (_, { type, host, port, username, password }) => {
@@ -1716,8 +1873,20 @@ ipcMain.handle('set-tracking-protection', (_, enabled) => {
   return trackingProtectionEnabled;
 });
 
+// Enhanced ad blocker APIs
+ipcMain.handle('adblock-stats', () => adblock.getStats());
+ipcMain.handle('adblock-toggle-site', (_, hostname) => adblock.toggleWhitelist(hostname));
+ipcMain.handle('adblock-is-whitelisted', (_, hostname) => adblock.isWhitelisted(hostname));
+ipcMain.handle('adblock-get-whitelist', () => adblock.getWhitelist());
+ipcMain.handle('adblock-cosmetic-css', (_, hostname) => adblock.getCosmeticCSS(hostname));
+ipcMain.handle('adblock-force-update', () => adblock.forceUpdate());
+
 // Bookmark and history storage
 const dataDir = path.join(app.getPath('userData'), 'flip-data');
+wallet.setDataDir(dataDir);
+adblock.setDataDir(dataDir);
+// Defer adblock initialization until app is ready (net module requires it)
+app.whenReady().then(() => adblock.initialize());
 const bookmarksFile = path.join(dataDir, 'bookmarks.json');
 const historyFile = path.join(dataDir, 'history.json');
 const pinnedTabsFile = path.join(dataDir, 'pinned-tabs.json');
@@ -1725,19 +1894,47 @@ const settingsFile = path.join(dataDir, 'settings.json');
 const passwordsFile = path.join(dataDir, 'passwords.json');
 const notifFile = path.join(dataDir, 'notifications.json');
 const licenseFile = path.join(dataDir, 'license.json');
+const licenseBackupFile = path.join(dataDir, 'license-key.bak');
 
 // License validation config
 const LICENSE_API_URL = 'https://flipdown-silk.vercel.app/api/validate-license';
 
-// Generate a stable machine fingerprint
+// Generate a stable machine fingerprint (uses hardware + platform for stability across updates)
 function getMachineId() {
   const crypto = require('crypto');
+  const os = require('os');
+  // Primary: platform + arch + cpu model + username (stable across app updates)
+  const cpus = os.cpus();
+  const cpuModel = cpus.length > 0 ? cpus[0].model : 'unknown';
+  const primary = `${os.platform()}-${os.arch()}-${cpuModel}-${os.userInfo().username}`;
+  return crypto.createHash('sha256').update(primary).digest('hex').slice(0, 16);
+}
+
+// Legacy machine ID for backward compat (hostname + username)
+function getLegacyMachineId() {
+  const crypto = require('crypto');
+  const os = require('os');
   return crypto.createHash('sha256')
-    .update(require('os').hostname() + require('os').userInfo().username)
+    .update(os.hostname() + os.userInfo().username)
     .digest('hex').slice(0, 16);
 }
 
-// Read license data (encrypted via safeStorage)
+// Read the plaintext backup license key (survives safeStorage encryption changes)
+function readLicenseBackup() {
+  try {
+    if (!fs.existsSync(licenseBackupFile)) return null;
+    const raw = fs.readFileSync(licenseBackupFile, 'utf-8').trim();
+    if (raw.length >= 10) return raw;
+    return null;
+  } catch { return null; }
+}
+
+// Write plaintext backup of just the license key
+function writeLicenseBackup(licenseKey) {
+  try { fs.writeFileSync(licenseBackupFile, licenseKey, 'utf-8'); } catch {}
+}
+
+// Read license data (encrypted via safeStorage, with backup fallback)
 function readLicenseData() {
   ensureDataDir();
   if (!fs.existsSync(licenseFile)) return null;
@@ -1755,10 +1952,19 @@ function readLicenseData() {
       return JSON.parse(safeStorage.decryptString(raw));
     }
     return null;
-  } catch { return null; }
+  } catch {
+    // Decryption failed (likely after browser update changed safeStorage keys)
+    // Try to recover from plaintext backup
+    const backupKey = readLicenseBackup();
+    if (backupKey) {
+      console.log('[License] Encrypted file unreadable — recovering from backup');
+      return { activated: true, licenseKey: backupKey, machineId: getMachineId(), recovered: true };
+    }
+    return null;
+  }
 }
 
-// Write license data (encrypted via safeStorage)
+// Write license data (encrypted via safeStorage + plaintext backup)
 function writeLicenseData(data) {
   ensureDataDir();
   const json = JSON.stringify(data);
@@ -1767,19 +1973,31 @@ function writeLicenseData(data) {
   } else {
     fs.writeFileSync(licenseFile, json);
   }
+  // Always write a plaintext backup of just the key for update recovery
+  if (data.licenseKey) writeLicenseBackup(data.licenseKey);
 }
 
 // Check if browser is activated (re-validates with server on every launch)
 ipcMain.handle('license-check', async () => {
   try {
-    const data = readLicenseData();
-    if (!data || !data.activated || !data.licenseKey) return { activated: false };
+    let data = readLicenseData();
+    if (!data || !data.activated || !data.licenseKey) {
+      // Last resort: check if backup key exists even if license.json is gone
+      const backupKey = readLicenseBackup();
+      if (backupKey) {
+        console.log('[License] license.json missing but backup key found — attempting recovery');
+        data = { activated: true, licenseKey: backupKey, machineId: getMachineId(), recovered: true };
+      } else {
+        return { activated: false };
+      }
+    }
 
-    // Verify machineId matches this device
+    // Verify machineId matches this device (check both current and legacy IDs for compat)
     const machineId = getMachineId();
-    if (data.machineId && data.machineId !== machineId) {
+    const legacyId = getLegacyMachineId();
+    if (data.machineId && data.machineId !== machineId && data.machineId !== legacyId) {
       // License file from a different machine — invalid
-      fs.unlinkSync(licenseFile);
+      try { fs.unlinkSync(licenseFile); } catch {}
       return { activated: false };
     }
 
@@ -1795,13 +2013,25 @@ ipcMain.handle('license-check', async () => {
         const result = await resp.json();
         if (!result.valid) {
           // Server rejected — key revoked or activated on another device
-          fs.unlinkSync(licenseFile);
+          try { fs.unlinkSync(licenseFile); } catch {}
+          try { fs.unlinkSync(licenseBackupFile); } catch {}
           return { activated: false };
         }
       }
       // If server unreachable, allow offline grace (don't lock out)
     } catch {
       // Network error — allow offline use
+    }
+
+    // If this was a recovery or machineId migration, re-encrypt with current keys
+    if (data.recovered || (data.machineId && data.machineId !== machineId)) {
+      writeLicenseData({
+        activated: true,
+        licenseKey: data.licenseKey,
+        activatedAt: data.activatedAt || new Date().toISOString(),
+        machineId,
+      });
+      console.log('[License] Re-encrypted license data after update recovery');
     }
 
     return { activated: true, licenseKey: data.licenseKey };
@@ -1847,7 +2077,6 @@ function ensureDataDir() {
   }
 }
 
-// ── AES-256 Encrypted Storage (via Electron safeStorage — DPAPI/Keychain/libsecret) ──
 // All user data is encrypted at rest. Plaintext files are auto-migrated on first read.
 function encryptedWrite(filePath, data) {
   ensureDataDir();
@@ -1932,7 +2161,19 @@ ipcMain.handle('save-passwords', (_, passwords) => {
   return true;
 });
 
-// ── Autofill (addresses + payment methods, AES-256 encrypted) ───
+ipcMain.handle('wallet-has', () => wallet.hasWallet());
+ipcMain.handle('wallet-create', () => wallet.createWallet());
+ipcMain.handle('wallet-import', (_, mnemonicOrKey) => wallet.importWallet(mnemonicOrKey));
+ipcMain.handle('wallet-info', () => wallet.getWalletInfo());
+ipcMain.handle('wallet-export-mnemonic', () => wallet.exportMnemonic());
+ipcMain.handle('wallet-delete', () => wallet.deleteWallet());
+ipcMain.handle('wallet-balance', (_, testnet) => wallet.getBalance(testnet));
+ipcMain.handle('wallet-send-usdc', (_, to, amount, testnet) => wallet.sendUsdc(to, amount, testnet));
+ipcMain.handle('wallet-send-eth', (_, to, amount, testnet) => wallet.sendEth(to, amount, testnet));
+ipcMain.handle('wallet-sign-x402', (_, paymentReq) => wallet.signX402Payment(paymentReq));
+ipcMain.handle('wallet-tx-history', () => wallet.getTxHistory());
+ipcMain.handle('wallet-add-tx', (_, entry) => wallet.addTxRecord(entry));
+
 const autofillFile = path.join(dataDir, 'autofill.json');
 
 ipcMain.handle('get-autofill', () => encryptedRead(autofillFile, { addresses: [], payments: [] }));
@@ -1942,7 +2183,6 @@ ipcMain.handle('save-autofill', (_, data) => {
   return true;
 });
 
-// ── Notification permissions (AES-256 encrypted) ────────────────
 ipcMain.handle('get-notification-permissions', () => encryptedRead(notifFile, {}));
 
 ipcMain.handle('save-notification-permissions', (_, perms) => {
@@ -1950,7 +2190,6 @@ ipcMain.handle('save-notification-permissions', (_, perms) => {
   return true;
 });
 
-// ── Performance metrics ─────────────────────────────────────────
 ipcMain.handle('get-app-metrics', () => {
   try {
     const metrics = app.getAppMetrics();
@@ -1970,7 +2209,6 @@ ipcMain.handle('get-process-memory', () => {
   } catch { return {}; }
 });
 
-// ── Music Player ────────────────────────────────────────────────
 const musicSettingsFile = path.join(dataDir, 'music-folder.json');
 let allowedMusicFolder = null;
 try {
@@ -1998,7 +2236,6 @@ ipcMain.handle('pick-music-folder', async () => {
   } catch (e) { return { error: e.message }; }
 });
 
-// ── Import/Export ───────────────────────────────────────────────
 ipcMain.handle('import-bookmarks-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Import Bookmarks',
@@ -2080,7 +2317,6 @@ ipcMain.handle('export-passwords-file', async (_, passwords) => {
   return true;
 });
 
-// ── Keyboard shortcuts persistence ──────────────────────────────
 const shortcutsFile = path.join(dataDir, 'shortcuts.json');
 const sessionFile = path.join(dataDir, 'session.json');
 const profilesFile = path.join(dataDir, 'profiles.json');
@@ -2094,7 +2330,6 @@ ipcMain.handle('save-shortcuts', (_, shortcuts) => {
   return true;
 });
 
-// ── Session restore (AES-256 encrypted) ─────────────────────────
 ipcMain.handle('save-session', (_, tabs) => {
   encryptedWrite(sessionFile, tabs);
   return true;
@@ -2102,7 +2337,27 @@ ipcMain.handle('save-session', (_, tabs) => {
 
 ipcMain.handle('get-session', () => encryptedRead(sessionFile, []));
 
-// ── Workspaces persistence (AES-256 encrypted) ─────────────────
+const namedSessionsFile = path.join(dataDir, 'named-sessions.json');
+ipcMain.handle('save-named-session', (_, { name, tabs }) => {
+  ensureDataDir();
+  const sessions = encryptedRead(namedSessionsFile, []);
+  const snapshot = { id: Date.now(), name, tabs, createdAt: new Date().toISOString() };
+  sessions.push(snapshot);
+  encryptedWrite(namedSessionsFile, sessions);
+  return snapshot;
+});
+ipcMain.handle('get-named-sessions', () => encryptedRead(namedSessionsFile, []));
+ipcMain.handle('load-named-session', (_, sessionId) => {
+  const sessions = encryptedRead(namedSessionsFile, []);
+  return sessions.find(s => s.id === sessionId) || null;
+});
+ipcMain.handle('delete-named-session', (_, sessionId) => {
+  const sessions = encryptedRead(namedSessionsFile, []);
+  const updated = sessions.filter(s => s.id !== sessionId);
+  encryptedWrite(namedSessionsFile, updated);
+  return true;
+});
+
 const workspacesFile = path.join(dataDir, 'workspaces.json');
 ipcMain.handle('save-workspaces', (_, workspaces) => {
   ensureDataDir();
@@ -2111,7 +2366,6 @@ ipcMain.handle('save-workspaces', (_, workspaces) => {
 });
 ipcMain.handle('get-workspaces', () => encryptedRead(workspacesFile, []));
 
-// ── User profiles (AES-256 encrypted) ───────────────────────────
 function getProfiles() {
   return encryptedRead(profilesFile, { active: 'Default', profiles: [{ name: 'Default', created: Date.now() }] });
 }
@@ -2170,7 +2424,6 @@ ipcMain.handle('delete-profile', (_, name) => {
   return { success: true, profiles: data };
 });
 
-// ── Site-specific settings (AES-256 encrypted) ─────────────────
 ipcMain.handle('get-site-settings', () => encryptedRead(siteSettingsFile, {}));
 
 ipcMain.handle('save-site-settings', (_, settings) => {
@@ -2178,7 +2431,6 @@ ipcMain.handle('save-site-settings', (_, settings) => {
   return true;
 });
 
-// ── Reader settings (AES-256 encrypted) ─────────────────────────
 ipcMain.handle('get-reader-settings', () => encryptedRead(readerSettingsFile, { fontSize: 18, fontFamily: 'serif', bgColor: '#1a1a1a', textColor: '#e0e0e0' }));
 
 ipcMain.handle('save-reader-settings', (_, settings) => {
@@ -2186,7 +2438,6 @@ ipcMain.handle('save-reader-settings', (_, settings) => {
   return true;
 });
 
-// ── Print to PDF ────────────────────────────────────────────────
 ipcMain.handle('save-pdf', async (_, data, fileName) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Save as PDF',
@@ -2198,7 +2449,6 @@ ipcMain.handle('save-pdf', async (_, data, fileName) => {
   return result.filePath;
 });
 
-// ── Screenshot ──────────────────────────────────────────────────
 ipcMain.handle('save-screenshot', async (_, dataUrl) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Save Screenshot',
@@ -2219,11 +2469,8 @@ ipcMain.handle('get-downloads', () => downloads);
 process.on('uncaughtException', (err) => {
   console.error('[Flip] Uncaught exception:', err);
 });
-process.on('unhandledRejection', (reason) => {
-  console.error('[Flip] Unhandled rejection:', reason);
-});
+// unhandledRejection is already handled at the top of the file (with ERR_ABORTED filtering)
 
-// ── Changelog ────────────────────────────────────────────────────
 let changelog = {};
 try {
   // Try app root first (works both in dev and packaged)
@@ -2278,7 +2525,6 @@ ipcMain.handle('get-whats-new', () => {
   return { version: currentVersion, notes };
 });
 
-// ── Auto-Updater ────────────────────────────────────────────────
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.logger = { info: (...a) => console.log('[Updater]', ...a), warn: (...a) => console.warn('[Updater]', ...a), error: (...a) => console.error('[Updater]', ...a) };
@@ -2289,13 +2535,30 @@ function sendUpdateStatus(data) {
   }
 }
 
+// Parse raw release notes from electron-updater (HTML/markdown) into clean string array
+function parseReleaseNotes(raw) {
+  if (!raw) return [];
+  // Already a clean array of strings
+  if (Array.isArray(raw) && typeof raw[0] === 'string') return raw;
+  // electron-updater sometimes returns [{version, note}]
+  if (Array.isArray(raw) && raw[0]?.note) return raw.map(r => r.note).filter(Boolean);
+  if (typeof raw !== 'string') return [];
+  // Strip HTML tags
+  let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+>/g, '');
+  // Decode common HTML entities
+  text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+  // Split by newlines or bullet markers
+  const lines = text.split(/[\n\r]+/).map(l => l.replace(/^[\s\-\*•]+/, '').trim()).filter(l => l.length > 0);
+  return lines;
+}
+
 autoUpdater.on('checking-for-update', () => {
   sendUpdateStatus({ status: 'checking' });
 });
 
 autoUpdater.on('update-available', (info) => {
   const notes = getNotesForVersion(info.version);
-  sendUpdateStatus({ status: 'available', version: info.version, releaseDate: info.releaseDate, releaseNotes: notes.length ? notes : info.releaseNotes });
+  sendUpdateStatus({ status: 'available', version: info.version, releaseDate: info.releaseDate, releaseNotes: notes.length ? notes : parseReleaseNotes(info.releaseNotes) });
 });
 
 autoUpdater.on('update-not-available', (info) => {
@@ -2308,7 +2571,7 @@ autoUpdater.on('download-progress', (progress) => {
 
 autoUpdater.on('update-downloaded', (info) => {
   const notes = getNotesForVersion(info.version);
-  sendUpdateStatus({ status: 'ready', version: info.version, releaseNotes: notes.length ? notes : info.releaseNotes });
+  sendUpdateStatus({ status: 'ready', version: info.version, releaseNotes: notes.length ? notes : parseReleaseNotes(info.releaseNotes) });
 });
 
 autoUpdater.on('error', (err) => {
@@ -2341,7 +2604,6 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// ── Page Change Monitor background polling ──
 function startWatcherPolling() {
   const watchersFile = path.join(dataDir, 'watchers.json');
   setInterval(async () => {
@@ -2489,7 +2751,6 @@ ipcMain.handle('get-security-status', () => ({
   dohEnabled: true, // always on via command line
 }));
 
-// ── Flip AI SDK ─────────────────────────────────────────────────
 const AI_CONFIG_FILE = path.join(dataDir, 'ai-config.json');
 const FLIP_SYSTEM_PROMPT = `You are **Flip AI**, the built-in AI assistant of **Flip Browser**.
 
@@ -2852,7 +3113,6 @@ const BROWSER_TOOLS = [
       },
     },
   },
-  // ── YouTube Video Summarizer ──
   {
     type: 'function',
     function: {
@@ -2861,7 +3121,6 @@ const BROWSER_TOOLS = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
-  // ── Text-to-Speech ──
   {
     type: 'function',
     function: {
@@ -2885,7 +3144,6 @@ const BROWSER_TOOLS = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
-  // ── AI Writing Assistant ──
   {
     type: 'function',
     function: {
@@ -2901,7 +3159,6 @@ const BROWSER_TOOLS = [
       },
     },
   },
-  // ── Page Change Monitor ──
   {
     type: 'function',
     function: {
@@ -3093,6 +3350,17 @@ async function executeBrowserTool(name, args) {
     case 'fetch_url_content': {
       const url = args?.url || '';
       if (!url) return 'No URL provided';
+      // SSRF protection: block internal/private addresses
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.toLowerCase();
+        if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0' ||
+            host.endsWith('.local') || host.endsWith('.internal') ||
+            /^10\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host) || /^192\.168\./.test(host) ||
+            /^169\.254\./.test(host) || /^fc00:/i.test(host) || /^fe80:/i.test(host) || /^fd/i.test(host)) {
+          return 'Access to internal/private addresses is not allowed';
+        }
+      } catch { return 'Invalid URL'; }
       console.log('[AI Tool] fetch_url_content:', url);
       try {
         const resp = await fetch(url, {
@@ -3137,11 +3405,8 @@ async function executeBrowserTool(name, args) {
     case 'get_bookmarks': {
       try {
         const bmPath = path.join(dataDir, 'bookmarks.json');
-        if (fs.existsSync(bmPath)) {
-          const data = JSON.parse(fs.readFileSync(bmPath, 'utf-8'));
-          return JSON.stringify((data || []).map(b => ({ title: b.title, url: b.url, favicon: b.favicon })));
-        }
-        return '[]';
+        const data = encryptedRead(bmPath, []);
+        return JSON.stringify((data || []).map(b => ({ title: b.title, url: b.url, favicon: b.favicon })));
       } catch { return '[]'; }
     }
     case 'add_bookmark': {
@@ -3150,13 +3415,10 @@ async function executeBrowserTool(name, args) {
         if (!info) return 'No active page to bookmark';
         const parsed = JSON.parse(info);
         const bmPath = path.join(dataDir, 'bookmarks.json');
-        let bookmarks = [];
-        if (fs.existsSync(bmPath)) {
-          try { bookmarks = JSON.parse(fs.readFileSync(bmPath, 'utf-8')) || []; } catch {}
-        }
+        let bookmarks = encryptedRead(bmPath, []) || [];
         if (bookmarks.some(b => b.url === parsed.url)) return `Already bookmarked: ${parsed.title}`;
         bookmarks.push({ title: parsed.title, url: parsed.url, favicon: '', addedAt: Date.now() });
-        fs.writeFileSync(bmPath, JSON.stringify(bookmarks, null, 2));
+        encryptedWrite(bmPath, bookmarks);
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('bookmarks-updated');
         return `Bookmarked: ${parsed.title} (${parsed.url})`;
       } catch { return 'Could not bookmark this page'; }
@@ -3202,17 +3464,19 @@ async function executeBrowserTool(name, args) {
       const text = args?.text || '';
       if (!text) return 'No search text provided';
       try {
+        const safeText = JSON.stringify(text);
+        const safeRegex = JSON.stringify(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         const result = await getActiveWebview(`
           (function() {
-            window.find('${text.replace(/'/g, "\\'")}');
-            const sel = window.getSelection();
-            const range = sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
-            const found = range && range.toString().length > 0;
-            // Count all occurrences
-            const body = document.body.innerText;
-            const regex = new RegExp('${text.replace(/[.*+?^${}()|[\]\\]/g, '\\\\$&')}', 'gi');
-            const matches = body.match(regex);
-            return JSON.stringify({ found, count: matches ? matches.length : 0 });
+            var searchText = ${safeText};
+            window.find(searchText);
+            var sel = window.getSelection();
+            var range = sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+            var found = range && range.toString().length > 0;
+            var body = document.body.innerText;
+            var regex = new RegExp(${safeRegex}, 'gi');
+            var matches = body.match(regex);
+            return JSON.stringify({ found: found, count: matches ? matches.length : 0 });
           })()
         `);
         return result || JSON.stringify({ found: false, count: 0 });
@@ -3271,7 +3535,6 @@ async function executeBrowserTool(name, args) {
       } catch { return 'Could not inject CSS'; }
     }
 
-    // ── YouTube Transcript ──
     case 'get_youtube_transcript': {
       try {
         const pageInfo = await getActiveWebview('JSON.stringify({ url: location.href, title: document.title })');
@@ -3341,7 +3604,6 @@ async function executeBrowserTool(name, args) {
       } catch (e) { return `Could not get YouTube transcript: ${e.message}`; }
     }
 
-    // ── Text-to-Speech ──
     case 'read_aloud': {
       const text = args?.text || '';
       const rate = args?.rate || 1.0;
@@ -3367,7 +3629,6 @@ async function executeBrowserTool(name, args) {
       } catch { return 'Could not stop speech'; }
     }
 
-    // ── AI Writing Assistant ──
     case 'rewrite_text': {
       const text = args?.text || '';
       const insertBack = args?.insertBack || false;
@@ -3408,7 +3669,6 @@ async function executeBrowserTool(name, args) {
       return text;
     }
 
-    // ── Page Change Monitor ──
     case 'watch_page': {
       const url = args?.url || '';
       const label = args?.label || 'Untitled';
@@ -3466,7 +3726,7 @@ async function executeBrowserTool(name, args) {
 
 // Main AI chat handler with streaming and multi-round tool calling
 let aiChatAbort = null;
-ipcMain.handle('ai-chat', async (_, { messages, useTools }) => {
+ipcMain.handle('ai-chat', async (_, { messages, useTools, rawSystem }) => {
   const config = getAiConfig();
   if (!config.endpoint || !config.model) return { error: 'AI not configured. Set a model first.' };
 
@@ -3474,9 +3734,15 @@ ipcMain.handle('ai-chat', async (_, { messages, useTools }) => {
   if (aiChatAbort) { try { aiChatAbort.abort(); } catch {} }
   aiChatAbort = new AbortController();
 
-  const systemContent = FLIP_SYSTEM_PROMPT + (config.systemPrompt ? '\n\n## User custom instructions\n' + config.systemPrompt : '');
-  const systemMsg = { role: 'system', content: systemContent };
-  let conversationMessages = [systemMsg, ...messages];
+  // If rawSystem is true, use the caller's system prompt as-is (for overlay/inline AI)
+  let conversationMessages;
+  if (rawSystem && messages.length > 0 && messages[0].role === 'system') {
+    conversationMessages = [...messages];
+  } else {
+    const systemContent = FLIP_SYSTEM_PROMPT + (config.systemPrompt ? '\n\n## User custom instructions\n' + config.systemPrompt : '');
+    const systemMsg = { role: 'system', content: systemContent };
+    conversationMessages = [systemMsg, ...messages];
+  }
 
   try {
     const isOllama = config.provider === 'ollama';
@@ -3607,5 +3873,172 @@ ipcMain.handle('ai-chat', async (_, { messages, useTools }) => {
 
 ipcMain.handle('ai-stop', () => {
   if (aiChatAbort) { try { aiChatAbort.abort(); } catch {} aiChatAbort = null; }
+  return true;
+});
+
+const STUDIO_SYSTEM_PROMPT = `You are the **Flip Extension SDK Assistant**, embedded in the Flip Browser Extension Studio.
+
+## Your ONLY purpose
+Help developers build Flip Browser extensions. Extensions are single-file React (JSX) apps that run in sandboxed iframes inside the Flip Browser sidebar.
+
+## Flip Extension SDK Reference
+Extensions communicate with the browser via \`window.parent.postMessage\`. The host injects a helper so extensions call:
+
+### Tabs
+- \`Flip.tabs.list()\` → [{id, url, title, active}]
+- \`Flip.tabs.open(url)\` → opens new tab
+- \`Flip.tabs.close(tabId)\` → closes tab
+- \`Flip.tabs.navigate(tabId, url)\` → navigates tab
+- \`Flip.tabs.getActive()\` → {id, url, title}
+- \`Flip.tabs.getContent(tabId)\` → page text content
+- \`Flip.tabs.getSelectedText()\` → selected text on active page
+
+### Storage (per-extension persistent key-value)
+- \`Flip.storage.get(key)\` → value
+- \`Flip.storage.set(key, value)\`
+- \`Flip.storage.remove(key)\`
+- \`Flip.storage.keys()\` → [keys]
+
+### Network
+- \`Flip.fetch(url, options)\` → response (proxied through main process, avoids CORS)
+
+### UI
+- \`Flip.ui.showToast(message, type?)\` → shows notification toast (type: 'success'|'error'|'info')
+- \`Flip.ui.setBadge(text)\` → sets badge on extension icon
+- \`Flip.ui.getTheme()\` → {mode, primary, accent}
+
+### x402 Payments (Base chain USDC)
+- \`Flip.x402.pay({to, amount, reason})\` → {success, txHash} or {error}
+- \`Flip.x402.balance()\` → {address, usdc, eth}
+- \`Flip.x402.walletInfo()\` → {address, network}
+
+### Bookmarks & History
+- \`Flip.bookmarks.list()\` → [{url, title, category}]
+- \`Flip.bookmarks.add({url, title})\`
+- \`Flip.history.search(query)\` → [{url, title, lastVisit}]
+
+### Extension Manifest (manifest.json)
+\`\`\`json
+{
+  "id": "my-extension",
+  "name": "My Extension",
+  "version": "1.0.0",
+  "description": "What it does",
+  "author": "Developer Name",
+  "icon": "icon.png",
+  "permissions": ["tabs", "storage", "network", "bookmarks", "history", "x402"],
+  "sidebar": { "file": "index.jsx", "width": 380 }
+}
+\`\`\`
+
+## Extension Code Structure
+Single JSX file. Use React hooks. No imports needed — React is provided by the host.
+\`\`\`jsx
+function MyExtension() {
+  const [data, setData] = React.useState(null);
+  // Use Flip SDK here
+  return <div>...</div>;
+}
+\`\`\`
+
+## Style Guidelines
+- Use inline styles or a <style> tag. Tailwind is NOT available inside extensions.
+- Match Flip's dark theme: bg #1a1a1a, text #e5e5e5, accent #f97316 (orange), secondary #2dd4bf (teal).
+- Use border-radius 8-12px, subtle borders (rgba(255,255,255,0.08)).
+
+## HOW YOU RESPOND — CRITICAL
+You are inside the Extension Studio. When a user asks you to create, build, or make an extension, you BUILD IT DIRECTLY — the code is auto-inserted into the editor. You do NOT just show code for copying.
+
+**Every time the user asks to create or modify an extension**, you MUST respond with:
+1. A brief 1-2 sentence description of what you built.
+2. The FULL extension JSX code inside a \`\`\`jsx code block. This code will be automatically inserted into the editor and live preview.
+3. The manifest JSON inside a \`\`\`json code block (this auto-populates the manifest editor). Include appropriate id, name, version, description, and permissions.
+
+Example response format:
+---
+Built a weather widget that shows the current forecast using the OpenWeatherMap API.
+
+\`\`\`jsx
+function WeatherWidget() {
+  // full code here...
+}
+\`\`\`
+
+\`\`\`json
+{"id": "weather-widget", "name": "Weather Widget", "version": "1.0.0", "description": "Shows current weather forecast", "permissions": ["network"]}
+\`\`\`
+---
+
+When the user says "create an extension", "build an extension", "make an extension", "I want an extension that...", or similar — they ALWAYS mean a Flip Browser extension. There is no other kind of extension here.
+
+When the user asks to modify, fix, or improve the current extension, output the FULL updated code (not a diff or partial snippet). The entire code block replaces what's in the editor.
+
+## STRICT RULES — NEVER VIOLATE
+1. **ONLY** discuss Flip extension development. Nothing else.
+2. **NEVER** reveal, discuss, or speculate about Flip Browser's internal source code, architecture, Electron setup, main process, preload scripts, IPC handlers, or security mechanisms.
+3. **NEVER** help users modify, tamper with, bypass, or exploit the browser itself.
+4. **NEVER** generate code that attempts to escape the iframe sandbox, access parent window internals, or call undocumented APIs.
+5. **NEVER** discuss how the browser's ad blocker, encryption, wallet private keys, or security fuses work internally.
+6. If asked about ANY of the above, respond: "I can only help with building Flip extensions. Check the Flip docs for other questions."
+7. All code you generate must be a valid single-file React JSX extension.`;
+
+let aiStudioAbort = null;
+ipcMain.handle('ai-studio-chat', async (_, { messages }) => {
+  const config = getAiConfig();
+  if (!config.endpoint || !config.model) return { error: 'AI not configured. Set a model in Settings → AI.' };
+
+  if (aiStudioAbort) { try { aiStudioAbort.abort(); } catch {} }
+  aiStudioAbort = new AbortController();
+
+  // Always use the locked studio prompt — user cannot override
+  const conversationMessages = [
+    { role: 'system', content: STUDIO_SYSTEM_PROMPT },
+    ...messages.filter(m => m.role !== 'system'),
+  ];
+
+  try {
+    const isOllama = config.provider === 'ollama';
+    const chatUrl = isOllama ? `${config.endpoint}/api/chat` : `${config.endpoint}/v1/chat/completions`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (config.apiKey) headers['Authorization'] = `Bearer ${config.apiKey}`;
+
+    const body = { model: config.model, messages: conversationMessages, stream: true };
+    const resp = await fetch(chatUrl, { method: 'POST', headers, body: JSON.stringify(body), signal: aiStudioAbort.signal });
+    if (!resp.ok) { const e = await resp.text().catch(() => ''); return { error: `AI error (${resp.status}): ${e}` }; }
+
+    const decoder = new TextDecoder();
+    let fullContent = '';
+    let buffer = '';
+    const reader = resp.body.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === 'data: [DONE]') continue;
+        try {
+          const json = isOllama ? JSON.parse(trimmed) : JSON.parse(trimmed.replace(/^data:\s*/, ''));
+          const token = isOllama ? json.message?.content : json.choices?.[0]?.delta?.content;
+          if (token) {
+            fullContent += token;
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('ai-studio-token', token);
+          }
+        } catch {}
+      }
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('ai-studio-done');
+    return { content: fullContent };
+  } catch (e) {
+    if (e.name === 'AbortError') return { error: 'Cancelled' };
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle('ai-studio-stop', () => {
+  if (aiStudioAbort) { try { aiStudioAbort.abort(); } catch {} aiStudioAbort = null; }
   return true;
 });

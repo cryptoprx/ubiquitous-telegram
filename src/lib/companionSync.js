@@ -5,7 +5,6 @@ import {
 } from 'firebase/firestore';
 import useBrowserStore from '../store/browserStore';
 
-// ── Firebase Config ──────────────────────────────────────────────
 // Same project as the companion app (mimo-b5745).
 // Fill these in from Firebase Console → Project Settings → Web app.
 const firebaseConfig = {
@@ -29,8 +28,10 @@ let unsubCommands = null;
 let unsubPairing = null;
 let unsubAI = null;
 let unsubFiles = null;
-let unsubWallet = null;
 let unsubIncomingCall = null;
+let unsubTOTP = null;
+let unsubVaultPull = null;
+let unsubNotifications = null;
 let tabSyncInterval = null;
 let passwordSyncInterval = null;
 
@@ -42,7 +43,6 @@ function getDb() {
   return db;
 }
 
-// ── Crypto Helpers ───────────────────────────────────────────────
 
 function randomHex(bytes) {
   const arr = new Uint8Array(bytes);
@@ -56,7 +56,6 @@ async function sha256(str) {
   return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Device Identity ──────────────────────────────────────────────
 // Persistent browser device ID — generated once, stored forever.
 
 function getDeviceId() {
@@ -68,7 +67,6 @@ function getDeviceId() {
   return id;
 }
 
-// ── Pairing State ────────────────────────────────────────────────
 
 function getPairingData() {
   try {
@@ -92,7 +90,6 @@ export function isPaired() {
   return !!getPairedUserId();
 }
 
-// ── Input Sanitization ───────────────────────────────────────────
 
 function sanitizeUrl(url) {
   if (typeof url !== 'string') return null;
@@ -112,7 +109,6 @@ function sanitizeTabId(id) {
   return /^[a-zA-Z0-9_-]{1,64}$/.test(id) ? id : null;
 }
 
-// ── QR Code Pairing ──────────────────────────────────────────────
 // 1. Browser generates pairingCode (8 hex) + pairingSecret (32 hex)
 // 2. Writes session to Firestore: pairingSessions/{code}
 // 3. Shows QR encoding: flip-pair:{code}:{secret}
@@ -209,7 +205,6 @@ export function unpair() {
   setPairingData(null);
 }
 
-// ── Tab Sync ─────────────────────────────────────────────────────
 
 function syncTabs() {
   const uid = getPairedUserId();
@@ -240,7 +235,6 @@ function syncTabs() {
   }
 }
 
-// ── Remote Commands Listener ─────────────────────────────────────
 
 function startCommandListener() {
   const uid = getPairedUserId();
@@ -261,7 +255,6 @@ function startCommandListener() {
         const cmd = change.doc.data();
         const cmdRef = doc(firestore, 'users', uid, 'remoteCommands', change.doc.id);
 
-        // ── Security checks ──
         // 1. Only process pending commands
         if (cmd.status !== 'pending') return;
 
@@ -278,7 +271,6 @@ function startCommandListener() {
           return;
         }
 
-        // ── Execute ──
         switch (cmd.type) {
           case 'open-url': {
             const url = sanitizeUrl(cmd.url);
@@ -301,7 +293,6 @@ function startCommandListener() {
   }
 }
 
-// ── Notification Forwarding ──────────────────────────────────────
 
 export function forwardNotification({ type = 'general', title, body }) {
   const uid = getPairedUserId();
@@ -320,13 +311,14 @@ export function forwardNotification({ type = 'general', title, body }) {
   } catch {}
 }
 
-// ── AI Relay ────────────────────────────────────────────────────
 // Companion writes user messages to Firestore → Browser injects them into
 // the AI chat extension (full tools, system prompt, browser actions) →
 // captures streamed response → writes it back to Firestore for companion.
 
-let aiRelayPending = null; // { msgRef, docId, uid } — tracks the companion message being processed
+let aiRelayPending = null; // { msgRef, docId, uid, relayId } — tracks the companion message being processed
 let aiRelayBuffer = '';    // collects streamed AI response tokens
+let unsubRelayToken = null;
+let unsubRelayDone = null;
 
 function startAIRelay() {
   const uid = getPairedUserId();
@@ -334,14 +326,18 @@ function startAIRelay() {
   try {
     const firestore = getDb();
 
+    // Cleanup any previous relay stream listeners
+    if (unsubRelayToken) { unsubRelayToken(); unsubRelayToken = null; }
+    if (unsubRelayDone) { unsubRelayDone(); unsubRelayDone = null; }
+
     // Listen for AI stream events to capture responses for companion
     if (window.flipAPI?.onAiStreamToken) {
-      window.flipAPI.onAiStreamToken((token) => {
+      unsubRelayToken = window.flipAPI.onAiStreamToken((token) => {
         if (aiRelayPending) aiRelayBuffer += token;
       });
     }
     if (window.flipAPI?.onAiStreamDone) {
-      window.flipAPI.onAiStreamDone(async () => {
+      unsubRelayDone = window.flipAPI.onAiStreamDone(async () => {
         if (!aiRelayPending) return;
         const { msgRef, docId, uid: relayUid } = aiRelayPending;
         const reply = aiRelayBuffer || 'No response from AI';
@@ -373,6 +369,11 @@ function startAIRelay() {
         const msgRef = doc(firestore, 'users', uid, 'companionAI', change.doc.id);
         // Only process pending user messages
         if (msg.status !== 'pending' || msg.role !== 'user') return;
+        // Skip if already processing another message (prevent race condition)
+        if (aiRelayPending) {
+          console.warn('[Companion] AI relay busy, skipping message:', change.doc.id);
+          return;
+        }
         // Mark as processing
         await setDoc(msgRef, { ...msg, status: 'processing' }, { merge: true }).catch(() => {});
 
@@ -403,12 +404,11 @@ function startAIRelay() {
   }
 }
 
-// ── Password Sync ───────────────────────────────────────────────
 // Push browser saved passwords to Firestore so companion vault can show them.
 // Encrypted with UID-derived key (same AES-256-GCM as wallet sync).
 
 async function encryptForSync(plaintext, uid) {
-  const password = 'flip-sync-' + uid;
+  const password = 'flip-sync-' + uid + '-' + getDeviceId();
   const enc = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -451,7 +451,6 @@ async function syncPasswordsToFirestore() {
   }
 }
 
-// ── Incoming Call Handler ───────────────────────────────────────
 // Companion can call the browser user. Listen for incoming call signals.
 
 function startCallListener() {
@@ -459,7 +458,7 @@ function startCallListener() {
   if (!uid) return;
   try {
     const firestore = getDb();
-    unsubIncomingCall = onSnapshot(doc(firestore, 'users', uid, 'incomingCall'), async (snap) => {
+    unsubIncomingCall = onSnapshot(doc(firestore, 'users', uid, 'incomingCall', 'current'), async (snap) => {
       const data = snap.data();
       if (!data || !data.code || data.status !== 'ringing') return;
       // Don't answer calls older than 30 seconds
@@ -486,7 +485,7 @@ export async function acceptCall(code, type = 'voice') {
   try {
     const firestore = getDb();
     // Mark call as accepted
-    await setDoc(doc(firestore, 'users', uid, 'incomingCall'), { status: 'accepted' }, { merge: true });
+    await setDoc(doc(firestore, 'users', uid, 'incomingCall', 'current'), { status: 'accepted' }, { merge: true });
 
     // Get user media
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
@@ -533,51 +532,113 @@ export async function rejectCall() {
   if (!uid) return;
   try {
     const firestore = getDb();
-    await setDoc(doc(firestore, 'users', uid, 'incomingCall'), { status: 'rejected' }, { merge: true });
+    await setDoc(doc(firestore, 'users', uid, 'incomingCall', 'current'), { status: 'rejected' }, { merge: true });
   } catch {}
 }
 
-// ── Wallet Sync ─────────────────────────────────────────────────
-// Push browser wallet to Firestore so companion can see it, and vice versa.
-// Seed is encrypted with AES-256-GCM (PBKDF2-derived key) before storing.
+// Listen for TOTP entries from companion Firestore and expose to browser UI.
 
-async function encryptSeed(plaintext, uid) {
-  const password = 'flip-wallet-' + uid;
-  const enc = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-  const key = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']
-  );
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
-  const buf = new Uint8Array(salt.length + iv.length + ct.byteLength);
-  buf.set(salt, 0);
-  buf.set(iv, salt.length);
-  buf.set(new Uint8Array(ct), salt.length + iv.length);
-  return btoa(String.fromCharCode(...buf));
-}
-
-export async function syncWalletToFirestore(walletData) {
+function startTOTPListener() {
   const uid = getPairedUserId();
-  if (!uid || !walletData) return;
+  if (!uid) return;
   try {
     const firestore = getDb();
-    const encryptedSeed = walletData.seed ? await encryptSeed(walletData.seed, uid) : '';
-    setDoc(doc(firestore, 'users', uid, 'settings', 'wallet'), {
-      address: walletData.address,
-      encryptedSeed,
-      updatedAt: serverTimestamp(),
-      source: 'browser',
-    }, { merge: true }).catch(() => {});
-  } catch {}
+    unsubTOTP = onSnapshot(collection(firestore, 'users', uid, 'totp'), (snap) => {
+      const entries = [];
+      snap.forEach((d) => entries.push({ id: d.id, ...d.data() }));
+      // Expose to browser UI via custom event
+      window.dispatchEvent(new CustomEvent('flip-totp-sync', { detail: { entries } }));
+      console.log('[Companion] TOTP entries synced:', entries.length);
+    });
+  } catch (e) {
+    console.error('[Companion] TOTP listener error:', e.message);
+  }
 }
 
-// ── File Bridge Listener ────────────────────────────────────────
+// Listen for companion-added vault entries and merge into local passwords.
+
+function startVaultPullListener() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    let firstSnapshot = true;
+    unsubVaultPull = onSnapshot(collection(firestore, 'users', uid, 'vault'), async (snap) => {
+      if (firstSnapshot) { firstSnapshot = false; return; }
+      // Get companion entries (not from browser)
+      const companionEntries = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        if (data.source !== 'browser') companionEntries.push({ id: d.id, ...data });
+      });
+      if (!companionEntries.length || !window.flipAPI?.getPasswords) return;
+      try {
+        const localPasswords = await window.flipAPI.getPasswords() || [];
+        let changed = false;
+        for (const entry of companionEntries) {
+          const existingIdx = localPasswords.findIndex((p) => p.id === 'companion_' + entry.id);
+          const pw = {
+            id: 'companion_' + entry.id,
+            site: entry.site || 'Unknown',
+            username: entry.username || '',
+            password: entry.encrypted ? '(encrypted on companion)' : '',
+            source: 'companion',
+            createdAt: Date.now(),
+          };
+          if (existingIdx >= 0) {
+            localPasswords[existingIdx] = pw;
+          } else {
+            localPasswords.push(pw);
+          }
+          changed = true;
+        }
+        if (changed) await window.flipAPI.savePasswords(localPasswords);
+      } catch (e) {
+        console.error('[Companion] Vault pull error:', e.message);
+      }
+    });
+  } catch (e) {
+    console.error('[Companion] Vault pull listener error:', e.message);
+  }
+}
+
+// Listen for notifications written by companion and show them in browser.
+
+function startNotificationListener() {
+  const uid = getPairedUserId();
+  if (!uid) return;
+  try {
+    const firestore = getDb();
+    const q = query(
+      collection(firestore, 'users', uid, 'notifications'),
+      orderBy('timestamp', 'desc'),
+      limit(5)
+    );
+    let firstSnapshot = true;
+    unsubNotifications = onSnapshot(q, (snap) => {
+      if (firstSnapshot) { firstSnapshot = false; return; }
+      snap.docChanges().forEach((change) => {
+        if (change.type !== 'added') return;
+        const notif = change.doc.data();
+        // Only show notifications NOT from this browser
+        if (notif.deviceId === getDeviceId()) return;
+        console.log('[Companion] Notification from companion:', notif.title);
+        // Show native OS notification
+        if (window.flipAPI?.showNotification) {
+          window.flipAPI.showNotification(notif.title || 'Companion', notif.body || '');
+        } else if (Notification?.permission === 'granted') {
+          new Notification(notif.title || 'Companion', { body: notif.body || '' });
+        }
+      });
+    });
+  } catch (e) {
+    console.error('[Companion] Notification listener error:', e.message);
+  }
+}
+
 // When companion uploads a file, browser sees it and notifies user.
 
-function startFileBridgeListener() {
+export function startFileBridgeListener() {
   const uid = getPairedUserId();
   if (!uid) return;
   try {
@@ -609,34 +670,6 @@ function startFileBridgeListener() {
   }
 }
 
-// ── Wallet Listener ────────────────────────────────────────────
-// Listen for wallet data from companion and store locally.
-
-function startWalletListener() {
-  const uid = getPairedUserId();
-  if (!uid) return;
-  try {
-    const firestore = getDb();
-    unsubWallet = onSnapshot(doc(firestore, 'users', uid, 'settings', 'wallet'), (snap) => {
-      const data = snap.data();
-      if (!data || data.source === 'browser') return; // ignore our own writes
-      if (data.address) {
-        console.log('[Companion] Wallet synced from companion:', data.address);
-        // Store in localStorage for the crypto view to use
-        localStorage.setItem('flip-companion-wallet', JSON.stringify({
-          address: data.address,
-          encryptedSeed: data.encryptedSeed || '',
-          source: data.source,
-          updatedAt: Date.now(),
-        }));
-      }
-    });
-  } catch (e) {
-    console.error('[Companion] Wallet listener error:', e.message);
-  }
-}
-
-// ── Start / Stop Sync ────────────────────────────────────────────
 
 export function startSync() {
   if (!isPaired()) return;
@@ -647,8 +680,10 @@ export function startSync() {
   startCommandListener();
   startAIRelay();
   startFileBridgeListener();
-  startWalletListener();
   startCallListener();
+  startTOTPListener();
+  startVaultPullListener();
+  startNotificationListener();
 
   // Push browser passwords to Firestore on startup + every 60s
   syncPasswordsToFirestore();
@@ -662,8 +697,14 @@ export function stopSync() {
   if (unsubCommands) { unsubCommands(); unsubCommands = null; }
   if (unsubAI) { unsubAI(); unsubAI = null; }
   if (unsubFiles) { unsubFiles(); unsubFiles = null; }
-  if (unsubWallet) { unsubWallet(); unsubWallet = null; }
   if (unsubIncomingCall) { unsubIncomingCall(); unsubIncomingCall = null; }
+  if (unsubTOTP) { unsubTOTP(); unsubTOTP = null; }
+  if (unsubVaultPull) { unsubVaultPull(); unsubVaultPull = null; }
+  if (unsubNotifications) { unsubNotifications(); unsubNotifications = null; }
+  if (unsubRelayToken) { unsubRelayToken(); unsubRelayToken = null; }
+  if (unsubRelayDone) { unsubRelayDone(); unsubRelayDone = null; }
+  aiRelayPending = null;
+  aiRelayBuffer = '';
   if (tabSyncInterval) { clearInterval(tabSyncInterval); tabSyncInterval = null; }
   if (passwordSyncInterval) { clearInterval(passwordSyncInterval); passwordSyncInterval = null; }
 }

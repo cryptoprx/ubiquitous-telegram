@@ -17,7 +17,6 @@ const DEFAULT_SETTINGS = {
 };
 
 const useBrowserStore = create((set, get) => ({
-  // ── Tabs ──────────────────────────────────────
   tabs: [
     {
       id: 1,
@@ -129,7 +128,38 @@ const useBrowserStore = create((set, get) => ({
       ),
     })),
 
-  // ── Tab Stacks (auto-group by domain) ────────
+  // Auto-suspend tabs inactive longer than threshold (minutes)
+  autoSuspendInactiveTabs: (thresholdMinutes = 30) => {
+    const state = get();
+    const now = Date.now();
+    const threshold = thresholdMinutes * 60 * 1000;
+    const updated = state.tabs.map(t => {
+      if (t.suspended || t.pinned || t.id === state.activeTabId || t.url === 'flip://newtab' || t.url?.startsWith('flip://')) return t;
+      if (now - (t.lastActive || 0) > threshold) return { ...t, suspended: true };
+      return t;
+    });
+    const suspendedCount = updated.filter(t => t.suspended).length - state.tabs.filter(t => t.suspended).length;
+    if (suspendedCount > 0) set({ tabs: updated });
+    return suspendedCount;
+  },
+
+  // Unsuspend all tabs
+  unsuspendAll: () =>
+    set((state) => ({
+      tabs: state.tabs.map(t => ({ ...t, suspended: false })),
+    })),
+
+  // Get suspend stats
+  getSuspendStats: () => {
+    const state = get();
+    const total = state.tabs.length;
+    const suspended = state.tabs.filter(t => t.suspended).length;
+    const active = total - suspended;
+    // Rough estimate: ~50MB per active tab, ~5MB per suspended tab
+    const estimatedSaved = suspended * 45; // MB saved
+    return { total, suspended, active, estimatedSavedMB: estimatedSaved };
+  },
+
   tabStacks: {},  // { [stackId]: { name, color, collapsed } }
   nextStackColor: 0,
 
@@ -158,7 +188,6 @@ const useBrowserStore = create((set, get) => ({
       },
     })),
 
-  // ── Tab Groups (manual named groups) ────────
   tabGroups: {},  // { [groupId]: { name, color, collapsed } }
   nextGroupId: 1,
 
@@ -201,31 +230,134 @@ const useBrowserStore = create((set, get) => ({
       tabs: state.tabs.map((t) => t.id === tabId ? { ...t, group: groupId } : t),
     })),
 
-  // ── Workspaces (save/restore tab sets) ────────
-  workspaces: [],  // [{ id, name, tabs: [{ url, title, favicon }], createdAt }]
+  // Auto-group all tabs by their domain
+  autoGroupByDomain: () => {
+    const state = get();
+    const domainColors = ['#f97316', '#8b5cf6', '#06b6d4', '#22c55e', '#ef4444', '#eab308', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'];
+    const domainMap = {}; // domain -> groupId
+    let nextGrpId = state.nextGroupId;
+    const newGroups = { ...state.tabGroups };
+    const newTabs = state.tabs.map(t => {
+      if (t.pinned || !t.url || t.url === 'flip://newtab') return t;
+      try {
+        const hostname = new URL(t.url).hostname.replace(/^www\./, '');
+        const domain = hostname.split('.').slice(-2).join('.');
+        if (!domainMap[domain]) {
+          // Check if group already exists for this domain
+          const existing = Object.entries(newGroups).find(([, g]) => g.name === domain);
+          if (existing) {
+            domainMap[domain] = existing[0];
+          } else {
+            const gid = `g${nextGrpId++}`;
+            newGroups[gid] = { name: domain, color: domainColors[Object.keys(domainMap).length % domainColors.length], collapsed: false };
+            domainMap[domain] = gid;
+          }
+        }
+        return { ...t, group: domainMap[domain] };
+      } catch { return t; }
+    });
+    // Only keep groups that have tabs
+    const usedGroups = new Set(newTabs.map(t => t.group).filter(Boolean));
+    const finalGroups = {};
+    for (const [gid, g] of Object.entries(newGroups)) {
+      if (usedGroups.has(gid)) finalGroups[gid] = g;
+    }
+    set({ tabs: newTabs, tabGroups: finalGroups, nextGroupId: nextGrpId });
+  },
+
+  // Ungroup all tabs
+  ungroupAll: () =>
+    set((state) => ({
+      tabs: state.tabs.map(t => ({ ...t, group: null })),
+      tabGroups: {},
+    })),
+
+  workspaces: [],  // [{ id, name, tabs: [...], createdAt, color, template }]
+  activeWorkspaceId: null, // currently active workspace id
   setWorkspaces: (workspaces) => set({ workspaces }),
 
-  saveWorkspace: (name) =>
+  saveWorkspace: (name, template) =>
     set((state) => {
       const snapshot = state.tabs
         .filter((t) => t.url !== 'flip://newtab' && !t.suspended)
-        .map(({ url, title, favicon }) => ({ url, title, favicon }));
+        .map(({ url, title, favicon, pinned }) => ({ url, title, favicon, pinned }));
+      const colors = ['#f97316', '#8b5cf6', '#06b6d4', '#22c55e', '#ef4444', '#eab308', '#ec4899', '#6366f1'];
       const ws = {
         id: Date.now(),
         name,
         tabs: snapshot,
         createdAt: new Date().toISOString(),
+        color: colors[state.workspaces.length % colors.length],
+        template: template || null,
       };
       const updated = [...state.workspaces, ws];
       window.flipAPI?.saveWorkspaces?.(updated);
       return { workspaces: updated };
     }),
 
+  switchWorkspace: (wsId) => {
+    const state = get();
+    if (state.activeWorkspaceId === wsId) return;
+
+    // Save current tabs into the active workspace before switching
+    const currentWsId = state.activeWorkspaceId;
+    let updatedWorkspaces = [...state.workspaces];
+    if (currentWsId) {
+      const idx = updatedWorkspaces.findIndex(w => w.id === currentWsId);
+      if (idx >= 0) {
+        updatedWorkspaces[idx] = {
+          ...updatedWorkspaces[idx],
+          tabs: state.tabs
+            .filter(t => t.url !== 'flip://newtab' && !t.suspended)
+            .map(({ url, title, favicon, pinned }) => ({ url, title, favicon, pinned })),
+        };
+      }
+    }
+
+    // Load target workspace tabs
+    const ws = updatedWorkspaces.find(w => w.id === wsId);
+    if (!ws) return;
+
+    let nextId = state.nextTabId;
+    const newTabs = ws.tabs.length > 0 ? ws.tabs.map(t => ({
+      id: nextId++,
+      url: t.url,
+      title: t.title || t.url,
+      favicon: t.favicon || null,
+      loading: true,
+      canGoBack: false,
+      canGoForward: false,
+      lastActive: Date.now(),
+      pinned: t.pinned || false,
+      suspended: false,
+      group: null,
+    })) : [{
+      id: nextId++,
+      url: 'flip://newtab',
+      title: 'New Tab',
+      loading: false,
+      canGoBack: false,
+      canGoForward: false,
+      lastActive: Date.now(),
+      pinned: false,
+      suspended: false,
+      group: null,
+    }];
+
+    window.flipAPI?.saveWorkspaces?.(updatedWorkspaces);
+    set({
+      workspaces: updatedWorkspaces,
+      activeWorkspaceId: wsId,
+      tabs: newTabs,
+      activeTabId: newTabs[0].id,
+      nextTabId: nextId,
+    });
+  },
+
   loadWorkspace: (wsId) => {
     const state = get();
     const ws = state.workspaces.find((w) => w.id === wsId);
     if (!ws || ws.tabs.length === 0) return;
-    // Close all current tabs, open workspace tabs
     let nextId = state.nextTabId;
     const newTabs = ws.tabs.map((t) => ({
       id: nextId++,
@@ -236,7 +368,7 @@ const useBrowserStore = create((set, get) => ({
       canGoBack: false,
       canGoForward: false,
       lastActive: Date.now(),
-      pinned: false,
+      pinned: t.pinned || false,
       suspended: false,
       group: null,
     }));
@@ -244,17 +376,62 @@ const useBrowserStore = create((set, get) => ({
       tabs: newTabs,
       activeTabId: newTabs[0].id,
       nextTabId: nextId,
+      activeWorkspaceId: wsId,
     });
   },
+
+  createWorkspaceFromTemplate: (template) => {
+    const templates = {
+      development: { name: 'Development', tabs: [
+        { url: 'https://github.com', title: 'GitHub' },
+        { url: 'https://stackoverflow.com', title: 'Stack Overflow' },
+        { url: 'https://developer.mozilla.org', title: 'MDN Web Docs' },
+      ]},
+      research: { name: 'Research', tabs: [
+        { url: 'https://scholar.google.com', title: 'Google Scholar' },
+        { url: 'https://en.wikipedia.org', title: 'Wikipedia' },
+      ]},
+      shopping: { name: 'Shopping', tabs: [
+        { url: 'https://amazon.com', title: 'Amazon' },
+      ]},
+      social: { name: 'Social', tabs: [
+        { url: 'https://twitter.com', title: 'X (Twitter)' },
+        { url: 'https://reddit.com', title: 'Reddit' },
+      ]},
+    };
+    const tpl = templates[template];
+    if (!tpl) return;
+    const state = get();
+    const colors = ['#f97316', '#8b5cf6', '#06b6d4', '#22c55e', '#ef4444', '#eab308', '#ec4899', '#6366f1'];
+    const ws = {
+      id: Date.now(),
+      name: tpl.name,
+      tabs: tpl.tabs,
+      createdAt: new Date().toISOString(),
+      color: colors[state.workspaces.length % colors.length],
+      template,
+    };
+    const updated = [...state.workspaces, ws];
+    window.flipAPI?.saveWorkspaces?.(updated);
+    set({ workspaces: updated });
+  },
+
+  renameWorkspace: (wsId, name) =>
+    set((state) => {
+      const updated = state.workspaces.map(w => w.id === wsId ? { ...w, name } : w);
+      window.flipAPI?.saveWorkspaces?.(updated);
+      return { workspaces: updated };
+    }),
 
   deleteWorkspace: (wsId) =>
     set((state) => {
       const updated = state.workspaces.filter((w) => w.id !== wsId);
       window.flipAPI?.saveWorkspaces?.(updated);
-      return { workspaces: updated };
+      const newState = { workspaces: updated };
+      if (state.activeWorkspaceId === wsId) newState.activeWorkspaceId = null;
+      return newState;
     }),
 
-  // ── Sidebar ───────────────────────────────────
   sidebarOpen: true,
   sidebarWidth: 260,
   sidebarView: 'tabs', // 'tabs' | 'bookmarks' | 'history' | 'extensions' | 'settings'
@@ -263,12 +440,10 @@ const useBrowserStore = create((set, get) => ({
   setSidebarView: (view) => set({ sidebarView: view, sidebarOpen: true }),
   setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
 
-  // ── Command Palette ───────────────────────────
   commandPaletteOpen: false,
   toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
   closeCommandPalette: () => set({ commandPaletteOpen: false }),
 
-  // ── Split View ────────────────────────────────
   splitView: false,
   splitTabId: null,
 
@@ -314,7 +489,6 @@ const useBrowserStore = create((set, get) => ({
       ),
     })),
 
-  // ── Settings ──────────────────────────────────
   settings: { ...DEFAULT_SETTINGS },
 
   updateSettings: (partial) =>
@@ -322,13 +496,43 @@ const useBrowserStore = create((set, get) => ({
       settings: { ...state.settings, ...partial },
     })),
 
-  // ── Bookmarks ─────────────────────────────────
   bookmarks: [],
+  bookmarkCategories: ['General', 'Development', 'News', 'Social', 'Shopping', 'Research', 'Entertainment', 'Work', 'Finance', 'Education'],
   setBookmarks: (bookmarks) => set({ bookmarks }),
 
-  addBookmark: (bookmark) =>
+  addBookmark: (bookmark) => {
+    const id = Date.now();
+    const newBm = { ...bookmark, id, category: bookmark.category || 'General', addedAt: new Date().toISOString() };
     set((state) => {
-      const bookmarks = [...state.bookmarks, { ...bookmark, id: Date.now() }];
+      const bookmarks = [...state.bookmarks, newBm];
+      window.flipAPI?.saveBookmarks(bookmarks);
+      return { bookmarks };
+    });
+    // Fire-and-forget AI categorization
+    if (window.flipAPI?.aiChat && !bookmark.category) {
+      window.flipAPI.aiChat({
+        messages: [
+          { role: 'system', content: 'You are a bookmark categorizer. Given a URL and title, respond with ONLY one category from this list: General, Development, News, Social, Shopping, Research, Entertainment, Work, Finance, Education. No explanation, just the category word.' },
+          { role: 'user', content: `URL: ${bookmark.url}\nTitle: ${bookmark.title || ''}` },
+        ],
+        stream: false,
+      }).then(result => {
+        const cat = (typeof result === 'string' ? result : result?.content || '').trim();
+        const validCats = get().bookmarkCategories;
+        if (cat && validCats.includes(cat)) {
+          set((state) => {
+            const bookmarks = state.bookmarks.map(b => b.id === id ? { ...b, category: cat } : b);
+            window.flipAPI?.saveBookmarks(bookmarks);
+            return { bookmarks };
+          });
+        }
+      }).catch(() => {});
+    }
+  },
+
+  updateBookmark: (id, partial) =>
+    set((state) => {
+      const bookmarks = state.bookmarks.map(b => b.id === id ? { ...b, ...partial } : b);
       window.flipAPI?.saveBookmarks(bookmarks);
       return { bookmarks };
     }),
@@ -342,11 +546,9 @@ const useBrowserStore = create((set, get) => ({
 
   isBookmarked: (url) => get().bookmarks.some((b) => b.url === url),
 
-  // ── History ───────────────────────────────────
   history: [],
   setHistory: (history) => set({ history }),
 
-  // ── Extensions ────────────────────────────────
   extensions: [],
   setExtensions: (extensions) => set({ extensions }),
 
@@ -367,7 +569,6 @@ const useBrowserStore = create((set, get) => ({
       extensions: [...state.extensions, ext],
     })),
 
-  // ── VPN / Proxy ─────────────────────────────────
   vpn: {
     active: false,
     type: 'socks5',
@@ -384,23 +585,18 @@ const useBrowserStore = create((set, get) => ({
       vpn: { ...state.vpn, ...partial },
     })),
 
-  // ── Ad Blocker Stats ──────────────────────────
   blockedCount: 0,
   incrementBlocked: () => set((s) => ({ blockedCount: s.blockedCount + 1 })),
 
-  // ── Reading Mode ────────────────────────────
   readingMode: false,
   toggleReadingMode: () => set((s) => ({ readingMode: !s.readingMode })),
 
-  // ── Autofill ───────────────────────────────────
   autofill: { addresses: [], payments: [] },
   setAutofill: (data) => set({ autofill: data }),
 
-  // ── Notification Permissions ───────────────────
   notificationPerms: {}, // { 'example.com': 'allow' | 'block' }
   setNotificationPerms: (perms) => set({ notificationPerms: perms }),
 
-  // ── Keyboard Shortcuts ─────────────────────────
   shortcuts: {
     newTab: 'Ctrl+T',
     closeTab: 'Ctrl+W',
@@ -418,19 +614,15 @@ const useBrowserStore = create((set, get) => ({
   },
   setShortcuts: (shortcuts) => set({ shortcuts }),
 
-  // ── Picture-in-Picture ─────────────────────────────────────
   pipActive: false,
   setPipActive: (active) => set({ pipActive: active }),
 
-  // ── Reader Settings ──────────────────────────────────────
   readerSettings: { fontSize: 18, fontFamily: 'serif', bgColor: '#1a1a1a', textColor: '#e0e0e0' },
   setReaderSettings: (s) => set({ readerSettings: s }),
 
-  // ── User Profiles ────────────────────────────────────────
   profiles: { active: 'Default', profiles: [{ name: 'Default', created: Date.now() }] },
   setProfiles: (p) => set({ profiles: p }),
 
-  // ── Site-Specific Settings ───────────────────────────────
   // { 'example.com': { zoom: 100, jsEnabled: true, cookiesEnabled: true } }
   siteSettings: {},
   setSiteSettings: (s) => set({ siteSettings: s }),
@@ -442,15 +634,12 @@ const useBrowserStore = create((set, get) => ({
       },
     })),
 
-  // ── Pending credential prompt (auto-detected from login forms) ──
   pendingCredential: null, // { site, username, password, tabId }
   setPendingCredential: (cred) => set({ pendingCredential: cred }),
 
-  // ── Permission request prompt (notifications, camera, mic, etc.) ──
   permissionRequest: null, // { id, origin, permission, type }
   setPermissionRequest: (req) => set({ permissionRequest: req }),
 
-  // ── Downloads (placeholder) ───────────────────
   downloads: [],
 }));
 

@@ -1,9 +1,60 @@
 {
-  "1.2.72": [
-    "Companion sync: browser passwords now push to Firestore vault for companion access",
-    "Companion sync: incoming call handler - accept/reject calls from companion app",
-    "Companion sync: full-screen call UI overlay with WebRTC video/audio",
-    "Companion sync: password sync runs on startup + every 60s"
+  "1.2.84": [
+    "Critical fix: AI stream listener leak — every AI query was stacking IPC handlers causing duplicate tokens, memory leaks, and CPU waste",
+    "All IPC event listeners now return unsubscribe functions for proper cleanup (preload.js)",
+    "AI stream cleanup in AiOverlay, AiTabAssistant, AddressBar, ExtensionHost, and companion sync",
+    "Companion AI relay race condition fix — rejects concurrent messages instead of overwriting",
+    "Companion password sync encryption strengthened with device-local secret in key derivation",
+    "Extension toolbar actions now reactively update when extensions are enabled/disabled",
+    "Build script safety: clean-build.js no longer kills all Electron processes (only Flip Browser)",
+    "Build script safety: package.json auto-restores if build fails mid-pipeline",
+    "Security: SSRF protection on AI fetch_url_content tool",
+    "Security: AI bookmark tools use encrypted storage instead of raw filesystem",
+    "Security: find-in-page input safely escaped with JSON.stringify",
+    "Removed dead bundled extensions (meditation-station, flip-podcasts)",
+    "Removed duplicate unhandledRejection handler and dead copyDirSync function",
+    "Added electron/integrity.json to .gitignore to prevent stale hashes in repo"
+  ],
+  "1.2.83": [
+    "Removed broken code-editor extension — hidden from browser until fixed",
+    "Removed email-filter test extension",
+    "Preset extensions: calendar, weather, community chat, security dashboard, and privacy dashboard now auto-install on first launch",
+    "Extension importing from folder paused — install extensions from the Marketplace only",
+    "License persistence fix: license now survives browser updates via plaintext backup recovery",
+    "License machine ID made more stable using hardware fingerprint instead of hostname",
+    "Legacy machine ID backward compatibility so existing licenses still work after update"
+  ],
+  "1.2.79": [
+    "x402 payments: set treasury address for 2% platform fee collection on Base chain",
+    "x402 fee split: content payment goes to resource server, platform fee sent separately to Flip treasury",
+    "Fix: update-available popup now shows clean text instead of raw HTML/markdown from release notes",
+    "Release notes parser: strips HTML tags, decodes entities, and normalizes bullet points for clean display"
+  ],
+  "1.2.77": [
+    "Enhanced ad blocker: EasyList + EasyPrivacy with 143K+ filters, per-site whitelist toggle, shield icon in address bar",
+    "Anti-tracking: automatically strips 40+ tracking parameters (utm, fbclid, gclid, etc.) from URLs",
+    "AI page overlay: floating draggable card for inline AI actions (explain, define, translate, summarize)",
+    "AI Tab Assistant: chat with any page — extracts content and enables multi-turn conversation in sidebar",
+    "AI Smart Bookmarks: auto-categorizes bookmarks on save, category filter pills, search, inline category editor",
+    "Workspaces: switchable tab sets with templates (Dev, Research, Shopping, Social), color coding, Ctrl+Alt+1-9 shortcuts",
+    "Session Manager: auto-saves every 30s + on close for crash recovery, named session snapshots",
+    "Tab auto-group by domain: one-click to organize all tabs into color-coded domain groups",
+    "Smart Tab Suspend: auto-suspends inactive tabs to save memory, suspend stats in Performance panel",
+    "Fix: AI summarize now extracts actual page content instead of returning navigation commands",
+    "Fix: ad blocker initialization deferred to app-ready so filter lists download properly",
+    "Reduced console noise: silenced verbose permission check logs and webview abort errors"
+  ],
+  "1.2.75": [
+    "Critical fix: companion calls now connect properly (Firestore document path was invalid)",
+    "2FA sync: browser now displays TOTP codes from companion in the Passwords sidebar panel",
+    "Password vault bidirectional: companion-added passwords now appear in browser with 'Companion' badge",
+    "Notifications: browser now receives and displays companion-sent notifications as native OS alerts",
+    "Removed wallet sync (wallet removed from companion app)",
+    "Companion app: removed File Bridge and Wallet features"
+  ],
+  "1.2.73": [
+    "AI relay: fixed timing issue where companion prompts could be lost if AI chat extension not yet loaded",
+    "Companion sync: all features now actively syncing (passwords, files, wallet, calls, AI, notifications)"
   ],
   "1.2.71": [
     "Companion sync: browser passwords now push to Firestore vault for companion access",
@@ -36,14 +87,6 @@
     "Chat user discovery and direct messaging"
   ],
   "1.2.66": [
-    "QR code pairing — browser shows a QR code in Settings → Companion App, phone scans to pair instantly",
-    "Security hardening — one-time pairing tokens with SHA-256 verification, 5-minute expiry, auto-cleanup",
-    "Device identity — persistent browser device ID for all sync operations",
-    "Input sanitization — blocks javascript:/data: URIs, validates all remote commands",
-    "Replay protection — remote commands older than 60s are rejected and deleted",
-    "Data minimization — commands deleted after processing, tabs synced as single doc instead of per-tab"
-  ],
-  "1.2.65": [
     "QR code pairing — browser shows a QR code in Settings → Companion App, phone scans to pair instantly",
     "Security hardening — one-time pairing tokens with SHA-256 verification, 5-minute expiry, auto-cleanup",
     "Device identity — persistent browser device ID for all sync operations",
@@ -116,27 +159,6 @@
     "Descriptive tooltips — hover over toolbar buttons for helpful descriptions",
     "Permission label fix — 'Deny by Default' changed to 'Ask when a site requests access' (permissions were never silently denied)"
   ],
-  "1.2.51": [
-    "Tab context menu fix — right-click menu no longer hidden behind the top bar",
-    "Flip AI x.com automation — use /x commands to tweet, read timeline, read notifications, like, and reply directly from Flip AI",
-    "Community Chat — bug report reminder added to extension description",
-    "Descriptive tooltips — hover over toolbar buttons for helpful descriptions",
-    "Permission label fix — 'Deny by Default' changed to 'Ask when a site requests access' (permissions were never silently denied)"
-  ],
-  "1.2.50": [
-    "Tab context menu fix — right-click menu no longer hidden behind the top bar",
-    "Flip AI x.com automation — use /x commands to tweet, read timeline, read notifications, like, and reply directly from Flip AI",
-    "Community Chat — bug report reminder added to extension description",
-    "Descriptive tooltips — hover over toolbar buttons for helpful descriptions",
-    "Permission label fix — 'Deny by Default' changed to 'Ask when a site requests access' (permissions were never silently denied)"
-  ],
-  "1.2.49": [
-    "Tab context menu fix — right-click menu no longer hidden behind the top bar",
-    "Flip AI x.com automation — use /x commands to tweet, read timeline, read notifications, like, and reply directly from Flip AI",
-    "Community Chat — bug report reminder added to extension description",
-    "Descriptive tooltips — hover over toolbar buttons for helpful descriptions",
-    "Permission label fix — 'Deny by Default' changed to 'Ask when a site requests access' (permissions were never silently denied)"
-  ],
   "1.2.48": [
     "Extension file saving fix — net.saveFile was blocked by wrong permission gate ('network' instead of 'storage'). File Converter, GIF Maker, and Image Editor now correctly save to Downloads folder.",
     "Image Editor rendering fix — images now display correctly on the canvas after loading"
@@ -176,42 +198,6 @@
     "Extension icon consistency — unified icon mappings across Marketplace, Extension Manager, and Extension Panel"
   ],
   "1.2.40": [
-    "Flip Browser completed version — celebration confetti animation on update",
-    "Flip Share extension — peer-to-peer file sharing via WebRTC DataChannels, room codes, drag-and-drop, chunked transfers with progress bar and speed indicator, transfer history",
-    "Weather Widget redesigned — animated SVG weather scenes (sun, clouds, rain, snow, thunder, fog), gradient hero card, 3-day forecast, stat cards for humidity/wind/visibility/UV/pressure/cloud cover, no emojis",
-    "Daily motivational quotes — new tab page shows a curated inspirational quote that changes each day",
-    "World News upgraded — switched from NBC to BBC World News RSS feed with deduplication for cleaner headlines",
-    "Flip Share download fix — received files now auto-save to Downloads folder via new Flip.net.saveFile IPC pipeline (sandboxed iframe blocked all previous download methods)",
-    "Downloads panel integration — Flip Share received files now appear in the sidebar Downloads panel with 'via Flip Share' source label"
-  ],
-  "1.2.39": [
-    "Flip Browser completed version — celebration confetti animation on update",
-    "Flip Share extension — peer-to-peer file sharing via WebRTC DataChannels, room codes, drag-and-drop, chunked transfers with progress bar and speed indicator, transfer history",
-    "Weather Widget redesigned — animated SVG weather scenes (sun, clouds, rain, snow, thunder, fog), gradient hero card, 3-day forecast, stat cards for humidity/wind/visibility/UV/pressure/cloud cover, no emojis",
-    "Daily motivational quotes — new tab page shows a curated inspirational quote that changes each day",
-    "World News upgraded — switched from NBC to BBC World News RSS feed with deduplication for cleaner headlines",
-    "Flip Share download fix — received files now auto-save to Downloads folder via new Flip.net.saveFile IPC pipeline (sandboxed iframe blocked all previous download methods)",
-    "Downloads panel integration — Flip Share received files now appear in the sidebar Downloads panel with 'via Flip Share' source label"
-  ],
-  "1.2.38": [
-    "Flip Browser completed version — celebration confetti animation on update",
-    "Flip Share extension — peer-to-peer file sharing via WebRTC DataChannels, room codes, drag-and-drop, chunked transfers with progress bar and speed indicator, transfer history",
-    "Weather Widget redesigned — animated SVG weather scenes (sun, clouds, rain, snow, thunder, fog), gradient hero card, 3-day forecast, stat cards for humidity/wind/visibility/UV/pressure/cloud cover, no emojis",
-    "Daily motivational quotes — new tab page shows a curated inspirational quote that changes each day",
-    "World News upgraded — switched from NBC to BBC World News RSS feed with deduplication for cleaner headlines",
-    "Flip Share download fix — received files now auto-save to Downloads folder via new Flip.net.saveFile IPC pipeline (sandboxed iframe blocked all previous download methods)",
-    "Downloads panel integration — Flip Share received files now appear in the sidebar Downloads panel with 'via Flip Share' source label"
-  ],
-  "1.2.37": [
-    "Flip Browser completed version — celebration confetti animation on update",
-    "Flip Share extension — peer-to-peer file sharing via WebRTC DataChannels, room codes, drag-and-drop, chunked transfers with progress bar and speed indicator, transfer history",
-    "Weather Widget redesigned — animated SVG weather scenes (sun, clouds, rain, snow, thunder, fog), gradient hero card, 3-day forecast, stat cards for humidity/wind/visibility/UV/pressure/cloud cover, no emojis",
-    "Daily motivational quotes — new tab page shows a curated inspirational quote that changes each day",
-    "World News upgraded — switched from NBC to BBC World News RSS feed with deduplication for cleaner headlines",
-    "Flip Share download fix — received files now auto-save to Downloads folder via new Flip.net.saveFile IPC pipeline (sandboxed iframe blocked all previous download methods)",
-    "Downloads panel integration — Flip Share received files now appear in the sidebar Downloads panel with 'via Flip Share' source label"
-  ],
-  "1.2.36": [
     "Flip Browser completed version — celebration confetti animation on update",
     "Flip Share extension — peer-to-peer file sharing via WebRTC DataChannels, room codes, drag-and-drop, chunked transfers with progress bar and speed indicator, transfer history",
     "Weather Widget redesigned — animated SVG weather scenes (sun, clouds, rain, snow, thunder, fog), gradient hero card, 3-day forecast, stat cards for humidity/wind/visibility/UV/pressure/cloud cover, no emojis",
@@ -286,38 +272,6 @@
     "Multiple Windows (Ctrl+N) — open additional browser windows",
     "Extension Security — network permission required for HTTP access, popups permission for popup windows, API keys masked from extensions, marketplace approval gate, cross_storage_write split from read"
   ],
-  "1.2.29": [
-    "Find in Page (Ctrl+F) — native overlay bar with match count, next/prev navigation, and Escape to close",
-    "Private Browsing (Ctrl+Shift+N) — incognito window with ephemeral session, no history/passwords/session saved",
-    "Tab Audio Indicator — speaker icon on tabs playing audio, click to mute/unmute",
-    "Full-screen mode (F11) — toggle full-screen on any page",
-    "Multiple Windows (Ctrl+N) — open additional browser windows",
-    "Extension Security — network permission required for HTTP access, popups permission for popup windows, API keys masked from extensions, marketplace approval gate, cross_storage_write split from read"
-  ],
-  "1.2.28": [
-    "Find in Page (Ctrl+F) — native overlay bar with match count, next/prev navigation, and Escape to close",
-    "Private Browsing (Ctrl+Shift+N) — incognito window with ephemeral session, no history/passwords/session saved",
-    "Tab Audio Indicator — speaker icon on tabs playing audio, click to mute/unmute",
-    "Full-screen mode (F11) — toggle full-screen on any page",
-    "Multiple Windows (Ctrl+N) — open additional browser windows",
-    "Extension Security — network permission required for HTTP access, popups permission for popup windows, API keys masked from extensions, marketplace approval gate, cross_storage_write split from read"
-  ],
-  "1.2.27": [
-    "Find in Page (Ctrl+F) — native overlay bar with match count, next/prev navigation, and Escape to close",
-    "Private Browsing (Ctrl+Shift+N) — incognito window with ephemeral session, no history/passwords/session saved",
-    "Tab Audio Indicator — speaker icon on tabs playing audio, click to mute/unmute",
-    "Full-screen mode (F11) — toggle full-screen on any page",
-    "Multiple Windows (Ctrl+N) — open additional browser windows",
-    "Extension Security — network permission required for HTTP access, popups permission for popup windows, API keys masked from extensions, marketplace approval gate, cross_storage_write split from read"
-  ],
-  "NEXT": [
-    "Find in Page (Ctrl+F) — native overlay bar with match count, next/prev navigation, and Escape to close",
-    "Private Browsing (Ctrl+Shift+N) — incognito window with ephemeral session, no history/passwords/session saved",
-    "Tab Audio Indicator — speaker icon on tabs playing audio, click to mute/unmute",
-    "Full-screen mode (F11) — toggle full-screen on any page",
-    "Multiple Windows (Ctrl+N) — open additional browser windows",
-    "Extension Security — network permission required for HTTP access, popups permission for popup windows, API keys masked from extensions, marketplace approval gate, cross_storage_write split from read"
-  ],
   "1.2.26": [
     "Flip AI — YouTube Video Summarizer: get transcripts and AI-generated summaries with timestamps for any YouTube video",
     "Flip AI — Read Aloud (TTS): text-to-speech reads any page content aloud with speed control, powered by Web Speech API",
@@ -327,30 +281,7 @@
     "Flip AI — 9 quick actions on home screen (Summarize page, Summarize video, Read aloud, Fix writing, Explain, Key points, Watch changes, Organize tabs, Translate)",
     "Flip AI — tool rounds increased from 5 to 10 for complex multi-step tasks"
   ],
-  "1.2.25": [
-    "Flip AI — YouTube Video Summarizer: get transcripts and AI-generated summaries with timestamps for any YouTube video",
-    "Flip AI — Read Aloud (TTS): text-to-speech reads any page content aloud with speed control, powered by Web Speech API",
-    "Flip AI — Writing Assistant: fix grammar, paraphrase, translate, change tone, and insert rewritten text back into any input field",
-    "Flip AI — Page Change Monitor: watch any URL for content changes with configurable intervals and OS notifications on change",
-    "Flip AI — 7 new browser tools: get_youtube_transcript, read_aloud, stop_reading, rewrite_text, watch_page, list_watchers, remove_watcher",
-    "Flip AI — 9 quick actions on home screen (Summarize page, Summarize video, Read aloud, Fix writing, Explain, Key points, Watch changes, Organize tabs, Translate)",
-    "Flip AI — tool rounds increased from 5 to 10 for complex multi-step tasks"
-  ],
   "1.2.24": [
-    "Flip AI — 8 new browser tools: pin/duplicate/switch/close tabs, find in page, extract data, read tables, inject CSS",
-    "AI can now extract emails, phone numbers, prices, and social links from any page",
-    "AI can read HTML tables as structured data",
-    "AI can inject custom CSS to restyle pages (hide elements, dark mode, font changes)",
-    "AI tab management — pin, duplicate, switch between, and close all other tabs via chat",
-    "AI find in page — search for text on the current page like Ctrl+F",
-    "Fixed — AI model switching now works correctly between Ollama, LM Studio, OpenAI, and custom providers",
-    "Fixed — AI settings view getting stuck open after selecting a model",
-    "Fixed — API key being silently wiped when reopening AI settings",
-    "Fixed — stale model selection when switching AI providers",
-    "Auto-publish — portal version and download URL sync automatically on build",
-    "Download portal — branded with Flip logo and CROAKWORKS footer"
-  ],
-  "1.2.23": [
     "Flip AI — 8 new browser tools: pin/duplicate/switch/close tabs, find in page, extract data, read tables, inject CSS",
     "AI can now extract emails, phone numbers, prices, and social links from any page",
     "AI can read HTML tables as structured data",
@@ -396,17 +327,6 @@
     "macOS build support — afterPack handles .app bundle fuse flipping",
     "build:mac and build:linux scripts added to package.json"
   ],
-  "1.2.19": [
-    "Flip AI — browser-aware AI assistant sidebar with streaming chat",
-    "AI setup wizard — Ollama, LM Studio, OpenAI, and custom endpoint support",
-    "AI tool calling — read page content, search web, open URLs, browse history",
-    "AI quick actions — Summarize page, Explain page, Key points",
-    "Flip.ai SDK — new extension API namespace for AI-powered extensions",
-    "Disabled extensions now sort to bottom of Extension Manager list",
-    "Extension sort order — Community Chat first, AI Chat second, dev tools last",
-    "macOS build support — afterPack handles .app bundle fuse flipping",
-    "build:mac and build:linux scripts added to package.json"
-  ],
   "1.2.18": [
     "Extension sort order — Community Chat always first, dev tools at the end",
     "JSON Formatter extension — format, minify, validate with syntax highlighting",
@@ -441,34 +361,7 @@
     "Security: translate injection hardened against script injection",
     "Security: extension webviews explicitly disable nodeIntegration"
   ],
-  "1.2.15": [
-    "FLIPPRX Miner extension — mine 50 FLIPPRX every 48h from the sidebar",
-    "Extensions can now open allowed popup windows (wallet connect support)",
-    "Tamper protection — ASAR integrity validation blocks modified app packages",
-    "Runtime integrity checks — SHA-256 verification of critical files on startup",
-    "Electron Fuses — disabled remote debugging, NODE_OPTIONS, and loose file loading",
-    "Security: extension states now AES-256 encrypted at rest",
-    "Security: proxy auth no longer disables tracking protection",
-    "Security: translate injection hardened against script injection",
-    "Security: extension webviews explicitly disable nodeIntegration"
-  ],
   "1.2.14": [
-    "6 color themes — Ocean Blue, Midnight Purple, Forest Green, Rose Gold, Monochrome",
-    "Tab Groups — create named groups, collapse, rename, assign tabs via right-click",
-    "Workspaces — save & restore entire tab sets",
-    "First-time setup: only 3 extensions enabled by default",
-    "Extension toggle states persist across restarts",
-    "FLIPPRX extension icon now displays correctly"
-  ],
-  "1.2.13": [
-    "6 color themes — Ocean Blue, Midnight Purple, Forest Green, Rose Gold, Monochrome",
-    "Tab Groups — create named groups, collapse, rename, assign tabs via right-click",
-    "Workspaces — save & restore entire tab sets",
-    "First-time setup: only 3 extensions enabled by default",
-    "Extension toggle states persist across restarts",
-    "FLIPPRX extension icon now displays correctly"
-  ],
-  "1.2.12": [
     "6 color themes — Ocean Blue, Midnight Purple, Forest Green, Rose Gold, Monochrome",
     "Tab Groups — create named groups, collapse, rename, assign tabs via right-click",
     "Workspaces — save & restore entire tab sets",

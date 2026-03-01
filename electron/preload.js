@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld('flipAPI', {
 
   // Extensions
   loadExtensions: () => ipcRenderer.invoke('load-extensions'),
-  installExtension: () => ipcRenderer.invoke('install-extension'),
   createExtension: (data) => ipcRenderer.invoke('create-extension', data),
 
   // VPN / Proxy
@@ -27,6 +26,12 @@ contextBridge.exposeInMainWorld('flipAPI', {
     ipcRenderer.on('ad-blocked', handler);
     return () => ipcRenderer.removeListener('ad-blocked', handler);
   },
+  adblockStats: () => ipcRenderer.invoke('adblock-stats'),
+  adblockToggleSite: (hostname) => ipcRenderer.invoke('adblock-toggle-site', hostname),
+  adblockIsWhitelisted: (hostname) => ipcRenderer.invoke('adblock-is-whitelisted', hostname),
+  adblockGetWhitelist: () => ipcRenderer.invoke('adblock-get-whitelist'),
+  adblockCosmeticCSS: (hostname) => ipcRenderer.invoke('adblock-cosmetic-css', hostname),
+  adblockForceUpdate: () => ipcRenderer.invoke('adblock-force-update'),
 
   // Bookmarks
   getBookmarks: () => ipcRenderer.invoke('get-bookmarks'),
@@ -73,6 +78,10 @@ contextBridge.exposeInMainWorld('flipAPI', {
   // Session restore
   saveSession: (tabs) => ipcRenderer.invoke('save-session', tabs),
   getSession: () => ipcRenderer.invoke('get-session'),
+  saveNamedSession: (data) => ipcRenderer.invoke('save-named-session', data),
+  getNamedSessions: () => ipcRenderer.invoke('get-named-sessions'),
+  loadNamedSession: (id) => ipcRenderer.invoke('load-named-session', id),
+  deleteNamedSession: (id) => ipcRenderer.invoke('delete-named-session', id),
 
   // User profiles
   getProfiles: () => ipcRenderer.invoke('get-profiles'),
@@ -99,7 +108,11 @@ contextBridge.exposeInMainWorld('flipAPI', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-  onUpdateStatus: (cb) => { ipcRenderer.on('update-status', (_, data) => cb(data)); },
+  onUpdateStatus: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('update-status', handler);
+    return () => ipcRenderer.removeListener('update-status', handler);
+  },
 
   // Changelog
   getChangelog: () => ipcRenderer.invoke('get-changelog'),
@@ -119,9 +132,21 @@ contextBridge.exposeInMainWorld('flipAPI', {
   getDownloads: () => ipcRenderer.invoke('get-downloads'),
 
   // Download events
-  onDownloadStarted: (cb) => { ipcRenderer.on('download-started', (_, d) => cb(d)); },
-  onDownloadUpdated: (cb) => { ipcRenderer.on('download-updated', (_, d) => cb(d)); },
-  onDownloadDone: (cb) => { ipcRenderer.on('download-done', (_, d) => cb(d)); },
+  onDownloadStarted: (cb) => {
+    const handler = (_, d) => cb(d);
+    ipcRenderer.on('download-started', handler);
+    return () => ipcRenderer.removeListener('download-started', handler);
+  },
+  onDownloadUpdated: (cb) => {
+    const handler = (_, d) => cb(d);
+    ipcRenderer.on('download-updated', handler);
+    return () => ipcRenderer.removeListener('download-updated', handler);
+  },
+  onDownloadDone: (cb) => {
+    const handler = (_, d) => cb(d);
+    ipcRenderer.on('download-done', handler);
+    return () => ipcRenderer.removeListener('download-done', handler);
+  },
 
   // Security
   getCertificateInfo: (url) => ipcRenderer.invoke('get-certificate-info', url),
@@ -131,7 +156,11 @@ contextBridge.exposeInMainWorld('flipAPI', {
 
   // Permission request prompt
   respondPermission: (id, allowed) => ipcRenderer.invoke('respond-permission', id, allowed),
-  onPermissionRequest: (cb) => { ipcRenderer.on('permission-request', (_, data) => cb(data)); },
+  onPermissionRequest: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('permission-request', handler);
+    return () => ipcRenderer.removeListener('permission-request', handler);
+  },
 
   // AI SDK
   aiGetConfig: () => ipcRenderer.invoke('ai-get-config'),
@@ -140,8 +169,51 @@ contextBridge.exposeInMainWorld('flipAPI', {
   aiListModels: () => ipcRenderer.invoke('ai-list-models'),
   aiChat: (data) => ipcRenderer.invoke('ai-chat', data),
   aiStop: () => ipcRenderer.invoke('ai-stop'),
-  onAiStreamToken: (cb) => { ipcRenderer.on('ai-stream-token', (_, token) => cb(token)); },
-  onAiStreamDone: (cb) => { ipcRenderer.on('ai-stream-done', () => cb()); },
+  onAiStreamToken: (cb) => {
+    const handler = (_, token) => cb(token);
+    ipcRenderer.on('ai-stream-token', handler);
+    return () => ipcRenderer.removeListener('ai-stream-token', handler);
+  },
+  onAiStreamDone: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-stream-done', handler);
+    return () => ipcRenderer.removeListener('ai-stream-done', handler);
+  },
+  // Extension Studio AI (locked-down)
+  aiStudioChat: (data) => ipcRenderer.invoke('ai-studio-chat', data),
+  aiStudioStop: () => ipcRenderer.invoke('ai-studio-stop'),
+  onAiStudioToken: (cb) => {
+    const handler = (_, token) => cb(token);
+    ipcRenderer.on('ai-studio-token', handler);
+    return handler;
+  },
+  offAiStudioToken: () => { ipcRenderer.removeAllListeners('ai-studio-token'); },
+  onAiStudioDone: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-studio-done', handler);
+    return handler;
+  },
+  offAiStudioDone: () => { ipcRenderer.removeAllListeners('ai-studio-done'); },
+
+  // Base Wallet (x402)
+  walletHas: () => ipcRenderer.invoke('wallet-has'),
+  walletCreate: () => ipcRenderer.invoke('wallet-create'),
+  walletImport: (seed) => ipcRenderer.invoke('wallet-import', seed),
+  walletInfo: () => ipcRenderer.invoke('wallet-info'),
+  walletExportMnemonic: () => ipcRenderer.invoke('wallet-export-mnemonic'),
+  walletDelete: () => ipcRenderer.invoke('wallet-delete'),
+  walletBalance: (testnet) => ipcRenderer.invoke('wallet-balance', testnet),
+  walletSendUsdc: (to, amount, testnet) => ipcRenderer.invoke('wallet-send-usdc', to, amount, testnet),
+  walletSendEth: (to, amount, testnet) => ipcRenderer.invoke('wallet-send-eth', to, amount, testnet),
+  walletSignX402: (paymentReq) => ipcRenderer.invoke('wallet-sign-x402', paymentReq),
+  walletTxHistory: () => ipcRenderer.invoke('wallet-tx-history'),
+  walletAddTx: (entry) => ipcRenderer.invoke('wallet-add-tx', entry),
+  onX402PaymentRequest: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('x402-payment-request', handler);
+    return () => ipcRenderer.removeListener('x402-payment-request', handler);
+  },
+  respondX402Payment: (id, approved) => ipcRenderer.invoke('respond-x402-payment', id, approved),
 
   // License
   licenseCheck: () => ipcRenderer.invoke('license-check'),
@@ -185,16 +257,56 @@ contextBridge.exposeInMainWorld('flipAPI', {
     return () => ipcRenderer.removeListener('open-url-in-tab', handler);
   },
   savePdf: (data, fileName) => ipcRenderer.invoke('save-pdf', data, fileName),
-  onAiCloseTab: (cb) => { ipcRenderer.on('ai-close-tab', (_, tabId) => cb(tabId)); },
-  onAiNavigateCurrent: (cb) => { ipcRenderer.on('ai-navigate-current', (_, url) => cb(url)); },
-  onAiToggleReadingMode: (cb) => { ipcRenderer.on('ai-toggle-reading-mode', () => cb()); },
-  onAiTakeScreenshot: (cb) => { ipcRenderer.on('ai-take-screenshot', () => cb()); },
-  onAiPinTab: (cb) => { ipcRenderer.on('ai-pin-tab', () => cb()); },
-  onAiDuplicateTab: (cb) => { ipcRenderer.on('ai-duplicate-tab', () => cb()); },
-  onAiSwitchTab: (cb) => { ipcRenderer.on('ai-switch-tab', (_, tabId) => cb(tabId)); },
-  onAiCloseOtherTabs: (cb) => { ipcRenderer.on('ai-close-other-tabs', () => cb()); },
-  onBookmarksUpdated: (cb) => { ipcRenderer.on('bookmarks-updated', () => cb()); },
-  onWatcherChange: (cb) => { ipcRenderer.on('watcher-change', (_, data) => cb(data)); },
+  onAiCloseTab: (cb) => {
+    const handler = (_, tabId) => cb(tabId);
+    ipcRenderer.on('ai-close-tab', handler);
+    return () => ipcRenderer.removeListener('ai-close-tab', handler);
+  },
+  onAiNavigateCurrent: (cb) => {
+    const handler = (_, url) => cb(url);
+    ipcRenderer.on('ai-navigate-current', handler);
+    return () => ipcRenderer.removeListener('ai-navigate-current', handler);
+  },
+  onAiToggleReadingMode: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-toggle-reading-mode', handler);
+    return () => ipcRenderer.removeListener('ai-toggle-reading-mode', handler);
+  },
+  onAiTakeScreenshot: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-take-screenshot', handler);
+    return () => ipcRenderer.removeListener('ai-take-screenshot', handler);
+  },
+  onAiPinTab: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-pin-tab', handler);
+    return () => ipcRenderer.removeListener('ai-pin-tab', handler);
+  },
+  onAiDuplicateTab: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-duplicate-tab', handler);
+    return () => ipcRenderer.removeListener('ai-duplicate-tab', handler);
+  },
+  onAiSwitchTab: (cb) => {
+    const handler = (_, tabId) => cb(tabId);
+    ipcRenderer.on('ai-switch-tab', handler);
+    return () => ipcRenderer.removeListener('ai-switch-tab', handler);
+  },
+  onAiCloseOtherTabs: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('ai-close-other-tabs', handler);
+    return () => ipcRenderer.removeListener('ai-close-other-tabs', handler);
+  },
+  onBookmarksUpdated: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('bookmarks-updated', handler);
+    return () => ipcRenderer.removeListener('bookmarks-updated', handler);
+  },
+  onWatcherChange: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('watcher-change', handler);
+    return () => ipcRenderer.removeListener('watcher-change', handler);
+  },
 
   // Window management
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Puzzle, Plus, Trash2, ToggleLeft, ToggleRight,
   ExternalLink, FolderOpen, AlertCircle, Check,
-  Code, Shield, Eye, RefreshCw, Zap, Globe, MessageSquare,
+  Shield, Eye, RefreshCw, Zap, Globe, MessageSquare,
   CloudSun, StickyNote, MessageCircle, Hammer, Music, Braces, Palette, FileSearch, Bot, Loader2,
   KeyRound, ShieldCheck, Newspaper, Wallet, Calendar, QrCode, Calculator, Ruler, Clock, Wifi,
   Phone, Image as ImageIcon, Pencil, ArrowLeftRight, Smile, Camera, Gauge, Video,
@@ -19,9 +19,9 @@ const EXT_ICONS = {
   'json-formatter': { type: 'lucide', icon: Braces, color: 'text-emerald-400' },
   'color-picker': { type: 'lucide', icon: Palette, color: 'text-violet-400' },
   'regex-tester': { type: 'lucide', icon: FileSearch, color: 'text-cyan-400' },
-  'flipprx-game': { type: 'image', src: './flipgame.ico' },
+  'flipprx-game': { type: 'lucide', icon: Zap, color: 'text-rose-400' },
   'flipprx-miner': { type: 'lucide', icon: Hammer, color: 'text-orange-400' },
-  'mimo-messenger': { type: 'image', src: './mimo.ico' },
+  'mimo-messenger': { type: 'lucide', icon: MessageSquare, color: 'text-violet-400' },
   'community-chat': { type: 'lucide', icon: MessageCircle, color: 'text-teal-400' },
   'password-vault': { type: 'lucide', icon: KeyRound, color: 'text-amber-400' },
   'totp-auth': { type: 'lucide', icon: ShieldCheck, color: 'text-emerald-400' },
@@ -152,24 +152,7 @@ export default function ExtensionManager() {
           </button>
         </div>
 
-        {/* Install button */}
-        <button
-          onClick={handleInstall}
-          disabled={installing}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-flip-500/10 to-accent-400/10 border border-flip-500/15 text-flip-400 hover:from-flip-500/20 hover:to-accent-400/20 hover:border-flip-500/25 transition-all text-xs font-medium disabled:opacity-50"
-        >
-          {installing ? (
-            <>
-              <div className="w-3 h-3 border-2 border-flip-400 border-t-transparent rounded-full animate-spin" />
-              Installing...
-            </>
-          ) : (
-            <>
-              <Plus size={14} />
-              Install from Folder
-            </>
-          )}
-        </button>
+        {/* Install from Folder — disabled */}
 
         {error && (
           <div className="mt-2 flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
@@ -221,7 +204,7 @@ export default function ExtensionManager() {
       <div className="px-4 py-2.5 border-t border-white/[0.04]">
         <div className="flex items-center gap-3 text-[9px] text-white/15">
           <div className="flex items-center gap-1">
-            <Code size={8} /> JSX + manifest.json
+            <Braces size={8} /> JSX + manifest.json
           </div>
           <div className="flex items-center gap-1">
             <Shield size={8} /> Sandboxed

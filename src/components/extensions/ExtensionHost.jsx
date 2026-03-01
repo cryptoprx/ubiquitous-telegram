@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import useBrowserStore from '../../store/browserStore';
 import { forwardNotification } from '../../lib/companionSync';
 
-// ── Security: Permission mapping ─────────────────────────────────
 // Maps API call types to the permission required in manifest.json
 const PERMISSION_MAP = {
   'tabs.getAll':    'tabs',
@@ -38,7 +37,6 @@ const PERMISSION_MAP = {
   'security.scan':            'security',
 };
 
-// ── Security: Trusted first-party extension IDs ─────────────────
 // These extensions are built by CROAKWORKS and are implicitly trusted
 const TRUSTED_EXTENSION_IDS = [
   'ai-chat', 'community-chat', 'flipprx-miner', 'flipprx-game',
@@ -47,7 +45,6 @@ const TRUSTED_EXTENSION_IDS = [
   'flip-call', 'file-cleaner', 'security-dashboard',
 ];
 
-// ── Security: Rate limiter ───────────────────────────────────────
 const rateLimiters = {};
 function checkRateLimit(extensionId, type) {
   const key = `${extensionId}:${type}`;
@@ -60,7 +57,6 @@ function checkRateLimit(extensionId, type) {
   return true;
 }
 
-// ── Security: URL validator ──────────────────────────────────────
 function isUrlSafe(url) {
   if (!url || typeof url !== 'string') return false;
   try {
@@ -72,14 +68,12 @@ function isUrlSafe(url) {
   }
 }
 
-// ── Security: Sanitize source code ───────────────────────────────
 function sanitizeSourceCode(code) {
   if (!code || typeof code !== 'string') return '';
   // Escape </script> to prevent breaking out of the script context
   return code.replace(/<\/script/gi, '<\\/script');
 }
 
-// ── Security: Validate payload values ────────────────────────────
 function sanitizeString(val, maxLen = 2048) {
   if (typeof val !== 'string') return '';
   return val.slice(0, maxLen);
@@ -183,9 +177,20 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
           },
           executeScript(script) { return Flip._postMessage('browser.executeScript', { script }); },
         },
+
+        x402: {
+          pay(opts) { return Flip._postMessage('x402.pay', opts); },
+          getWalletInfo() { return Flip._postMessage('x402.walletInfo'); },
+          getBalance(testnet) { return Flip._postMessage('x402.balance', { testnet }); },
+          getTxHistory() { return Flip._postMessage('x402.txHistory'); },
+        },
+
+        wallet: {
+          getInfo() { return Flip._postMessage('x402.walletInfo'); },
+          getBalance(testnet) { return Flip._postMessage('x402.balance', { testnet }); },
+        },
       };
 
-      // ── Media device polyfill for extension iframes ──
       // srcDoc iframes may not have direct media device access even without sandbox.
       // Polyfill getUserMedia to use the parent window's navigator as fallback.
       (function() {
@@ -238,7 +243,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
 
     const safeSource = sanitizeSourceCode(sourceCode);
 
-    // ── Security: Dynamic CSP based on permissions ──
     // Only grant network access if extension declares 'network' permission
     const hasNetwork = permissions.includes('network');
     const connectSrc = hasNetwork ? 'connect-src https: http: wss: ws:;' : 'connect-src \'none\';';
@@ -335,7 +339,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
       const { type, payload, callbackId } = e.data;
       let result = null;
 
-      // ── Security: Check permission ──
       const requiredPerm = PERMISSION_MAP[type];
       if (requiredPerm !== undefined && requiredPerm !== null && !permissions.includes(requiredPerm)) {
         console.warn(`[Flip Security] Extension "${extension.id}" blocked: requires "${requiredPerm}" permission for ${type}`);
@@ -346,7 +349,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
         return;
       }
 
-      // ── Security: Rate limit ──
       if (!checkRateLimit(extension.id, type)) {
         console.warn(`[Flip Security] Extension "${extension.id}" rate limited on ${type}`);
         iframeRef.current?.contentWindow?.postMessage({
@@ -462,7 +464,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
         case 'ai.getConfig': {
           if (window.flipAPI?.aiGetConfig) {
             window.flipAPI.aiGetConfig().then(r => {
-              // ── Security: Mask API key — never expose raw key to extensions ──
               if (r && typeof r === 'object') {
                 const masked = { ...r };
                 if (masked.apiKey) {
@@ -715,6 +716,75 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
           result = { error: 'Save API not available' };
           break;
         }
+        case 'x402.pay': {
+          // Extension-triggered micropayment — requires 'network' permission
+          const amount = payload?.amount || payload?.price;
+          const to = payload?.to || payload?.payTo;
+          const reason = payload?.reason || payload?.description || extension.manifest?.name || extension.id;
+          if (!amount || !to) {
+            result = { error: 'Missing amount or recipient address' };
+            break;
+          }
+          // Dispatch a custom event so X402PaymentPrompt can show a UI prompt
+          const payId = Date.now();
+          const payPromise = new Promise((resolve) => {
+            function onResult(ev) {
+              if (ev.detail?.id === payId) {
+                window.removeEventListener('flip-x402-ext-result', onResult);
+                resolve(ev.detail.result);
+              }
+            }
+            window.addEventListener('flip-x402-ext-result', onResult);
+            setTimeout(() => {
+              window.removeEventListener('flip-x402-ext-result', onResult);
+              resolve({ error: 'Payment timed out' });
+            }, 120000);
+          });
+          window.dispatchEvent(new CustomEvent('flip-x402-ext-pay', {
+            detail: {
+              id: payId,
+              amount: String(amount).replace('$', ''),
+              to,
+              reason,
+              extensionId: extension.id,
+              extensionName: extension.manifest?.name || extension.id,
+            },
+          }));
+          payPromise.then(r => {
+            iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
+          });
+          return;
+        }
+        case 'x402.walletInfo': {
+          if (window.flipAPI?.walletInfo) {
+            window.flipAPI.walletInfo().then(r => {
+              iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
+            });
+            return;
+          }
+          result = { error: 'Wallet not available' };
+          break;
+        }
+        case 'x402.balance': {
+          if (window.flipAPI?.walletBalance) {
+            window.flipAPI.walletBalance(payload?.testnet).then(r => {
+              iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
+            });
+            return;
+          }
+          result = { error: 'Wallet not available' };
+          break;
+        }
+        case 'x402.txHistory': {
+          if (window.flipAPI?.walletTxHistory) {
+            window.flipAPI.walletTxHistory().then(r => {
+              iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
+            });
+            return;
+          }
+          result = { error: 'Wallet not available' };
+          break;
+        }
         default:
           console.warn(`[Flip Security] Unknown API call "${type}" from extension "${extension.id}"`);
           result = null;
@@ -731,16 +801,16 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
     window.addEventListener('message', handleMessage);
 
     // Forward AI streaming events from main process to extension iframe
-    let streamTokenHandler, streamDoneHandler;
+    let unsubStreamToken, unsubStreamDone;
     if (permissions.includes('ai') && window.flipAPI) {
-      streamTokenHandler = (token) => {
+      const streamTokenHandler = (token) => {
         iframeRef.current?.contentWindow?.postMessage({ type: 'ai-stream-token', token }, '*');
       };
-      streamDoneHandler = () => {
+      const streamDoneHandler = () => {
         iframeRef.current?.contentWindow?.postMessage({ type: 'ai-stream-done' }, '*');
       };
-      window.flipAPI.onAiStreamToken(streamTokenHandler);
-      window.flipAPI.onAiStreamDone(streamDoneHandler);
+      unsubStreamToken = window.flipAPI.onAiStreamToken(streamTokenHandler);
+      unsubStreamDone = window.flipAPI.onAiStreamDone(streamDoneHandler);
     }
 
     // Forward AI prompt events (from context menu, address bar, etc.) to ai-chat extension
@@ -758,6 +828,8 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
     return () => {
       window.removeEventListener('message', handleMessage);
       if (aiPromptHandler) window.removeEventListener('flip-ai-prompt', aiPromptHandler);
+      if (unsubStreamToken) unsubStreamToken();
+      if (unsubStreamDone) unsubStreamDone();
     };
   }, [extension.id, permissions]);
 
@@ -766,7 +838,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
   // Webview-type extensions embed a URL directly using Electron's <webview> tag
   // which bypasses X-Frame-Options restrictions unlike iframes
   if (extension.manifest.content_type === 'webview' && extension.manifest.url) {
-    // ── Security: Validate webview URL ──
     if (!isUrlSafe(extension.manifest.url)) {
       return (
         <div style={{ padding: 20, color: 'rgba(255,100,100,0.8)', fontSize: 12 }}>
@@ -774,7 +845,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
         </div>
       );
     }
-    // ── Security: Only allow popups for extensions that declare 'popups' permission ──
     const webviewAllowPopups = permissions.includes('popups');
     return (
       <webview
@@ -793,7 +863,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
   const html = buildExtensionHTML();
   const needsWebRTC = permissions.includes('webrtc');
 
-  // ── Security: Build allow attribute based on permissions ──
   const allowParts = ['autoplay'];
   if (needsWebRTC) {
     allowParts.push('camera', 'microphone', 'display-capture');

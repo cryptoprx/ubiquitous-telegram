@@ -36,7 +36,6 @@ function buildReadingCSS(rs) {
 
 const isPrivateWindow = new URLSearchParams(window.location.search).get('private') === '1';
 
-// ── Auto-translate: detect page lang, translate if ≠ user lang ──
 function autoTranslateIfNeeded(webview, tabId) {
   const userLang = useBrowserStore.getState().settings?.language || 'en';
   // Only auto-translate if user language is NOT English (English pages are the majority)
@@ -189,7 +188,6 @@ export default function WebContent({ tabId: overrideTabId }) {
 
   const targetTabId = overrideTabId || activeTabId;
 
-  // ── Find in Page state ──
   const [findBarOpen, setFindBarOpen] = useState(false);
   const [findQuery, setFindQuery] = useState('');
   const [findResult, setFindResult] = useState(null); // { activeMatchOrdinal, matches }
@@ -206,11 +204,9 @@ export default function WebContent({ tabId: overrideTabId }) {
 
     webview.addEventListener('did-stop-loading', () => {
       useBrowserStore.getState().updateTab(tabId, { loading: false });
-      // ── Auto-translate if user language ≠ page language ──
       autoTranslateIfNeeded(webview, tabId);
     });
 
-    // ── Tab Audio Detection ──
     webview.addEventListener('media-started-playing', () => {
       useBrowserStore.getState().updateTab(tabId, { isAudible: true });
     });
@@ -218,7 +214,6 @@ export default function WebContent({ tabId: overrideTabId }) {
       useBrowserStore.getState().updateTab(tabId, { isAudible: false });
     });
 
-    // ── Find in Page result tracking ──
     webview.addEventListener('found-in-page', (e) => {
       if (e.result) {
         const ev = new CustomEvent('flip-find-result', { detail: { activeMatchOrdinal: e.result.activeMatchOrdinal, matches: e.result.matches } });
@@ -285,7 +280,6 @@ export default function WebContent({ tabId: overrideTabId }) {
       }));
     });
 
-    // ── Auto-detect login forms & offer to save credentials ──
     webview.addEventListener('dom-ready', () => {
       // Inject credential autofill from saved passwords
       const url = webview.getURL();
@@ -454,6 +448,41 @@ export default function WebContent({ tabId: overrideTabId }) {
         });
     }
 
+    // Extract page text content for AI Tab Assistant
+    function handleExtractContent(e) {
+      const { tabId } = e.detail || {};
+      const tid = tabId || useBrowserStore.getState().activeTabId;
+      const webview = webviewRefs.current[tid];
+      if (!webview) {
+        window.dispatchEvent(new CustomEvent('flip-page-content-result', { detail: { text: '', error: 'No webview' } }));
+        return;
+      }
+      webview.executeJavaScript(`
+        (function() {
+          // Extract meaningful text content from the page
+          var sel = ['article', 'main', '[role="main"]', '.post-content', '.entry-content', '.content', '#content'];
+          var container = null;
+          for (var i = 0; i < sel.length; i++) {
+            container = document.querySelector(sel[i]);
+            if (container) break;
+          }
+          if (!container) container = document.body;
+          // Remove script/style/nav/footer noise
+          var clone = container.cloneNode(true);
+          var remove = clone.querySelectorAll('script, style, nav, footer, header, aside, .sidebar, .ad, .ads, .cookie-banner, .popup, noscript, svg, iframe');
+          remove.forEach(function(el) { el.remove(); });
+          var text = clone.innerText || clone.textContent || '';
+          // Clean up whitespace
+          text = text.replace(/\\n{3,}/g, '\\n\\n').replace(/[ \\t]+/g, ' ').trim();
+          return { text: text, title: document.title, url: window.location.href };
+        })();
+      `).then(result => {
+        window.dispatchEvent(new CustomEvent('flip-page-content-result', { detail: result }));
+      }).catch(err => {
+        window.dispatchEvent(new CustomEvent('flip-page-content-result', { detail: { text: '', error: err.message } }));
+      });
+    }
+
     window.addEventListener('flip-navigate', handleNavigate);
     window.addEventListener('flip-go-back', handleGoBack);
     window.addEventListener('flip-go-forward', handleGoForward);
@@ -461,6 +490,7 @@ export default function WebContent({ tabId: overrideTabId }) {
     window.addEventListener('flip-hard-reload', handleHardReload);
     window.addEventListener('flip-pip', handlePip);
     window.addEventListener('flip-execute-script', handleExecuteScript);
+    window.addEventListener('flip-extract-page-content', handleExtractContent);
 
     return () => {
       window.removeEventListener('flip-navigate', handleNavigate);
@@ -470,6 +500,7 @@ export default function WebContent({ tabId: overrideTabId }) {
       window.removeEventListener('flip-hard-reload', handleHardReload);
       window.removeEventListener('flip-pip', handlePip);
       window.removeEventListener('flip-execute-script', handleExecuteScript);
+      window.removeEventListener('flip-extract-page-content', handleExtractContent);
     };
   }, []);
 
@@ -704,7 +735,6 @@ export default function WebContent({ tabId: overrideTabId }) {
     };
   }, []);
 
-  // ── Find in Page ──
   useEffect(() => {
     function handleOpenFind() {
       setFindBarOpen(true);
@@ -737,7 +767,6 @@ export default function WebContent({ tabId: overrideTabId }) {
   function findNext() { if (findQuery) findInPage(findQuery, { forward: true, findNext: true }); }
   function findPrev() { if (findQuery) findInPage(findQuery, { forward: false, findNext: true }); }
 
-  // ── Tab Mute handler ──
   useEffect(() => {
     function handleMuteTab(e) {
       const { tabId } = e.detail;
@@ -752,7 +781,6 @@ export default function WebContent({ tabId: overrideTabId }) {
     return () => window.removeEventListener('flip-mute-tab', handleMuteTab);
   }, []);
 
-  // ── Context Menu State ──
   const [ctxMenu, setCtxMenu] = useState(null);
 
   useEffect(() => {
@@ -791,22 +819,17 @@ export default function WebContent({ tabId: overrideTabId }) {
   // AI context menu submenu state
   const [aiSubMenu, setAiSubMenu] = useState(null); // 'rewrite' | 'translate' | null
 
-  function sendAiPrompt(prompt) {
-    // Open the AI chat sidebar first
-    const store = useBrowserStore.getState();
-    if (store.sidebarView !== 'extensions') store.setSidebarView('extensions');
-    window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: 'ai-chat' } }));
-    // Small delay to let the extension mount, then send the prompt
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('flip-ai-prompt', { detail: { prompt } }));
-    }, 300);
+  function sendAiPrompt(prompt, mode, pos) {
+    // Show inline AI overlay instead of routing to sidebar
+    window.dispatchEvent(new CustomEvent('flip-ai-overlay', {
+      detail: { prompt, mode: mode || '', x: pos?.x || 300, y: pos?.y || 200 },
+    }));
   }
 
-  const toolbarExts = useBrowserStore.getState().extensions.filter(
+  const toolbarExts = useBrowserStore((s) => s.extensions).filter(
     (e) => e.enabled && e.manifest?.toolbar_action
   );
 
-  // ── Snipping Tool State ──
   const [snipping, setSnipping] = useState(false);
   const [snipStart, setSnipStart] = useState(null);
   const [snipEnd, setSnipEnd] = useState(null);
@@ -1021,13 +1044,13 @@ export default function WebContent({ tabId: overrideTabId }) {
               <CtxDivider />
               {/* ── AI Actions ── */}
               <CtxItem label="✦ Explain this" accent onClick={() => ctxAction(() => {
-                sendAiPrompt(`Explain the following text clearly and concisely:\n\n"${ctxMenu.selectionText}"`);
+                sendAiPrompt(`Explain the following text clearly and concisely:\n\n"${ctxMenu.selectionText}"`, 'explain', { x: ctxMenu.x, y: ctxMenu.y });
               })} />
               <CtxItem label="✦ Define this" accent onClick={() => ctxAction(() => {
-                sendAiPrompt(`Define this term or phrase. Give a clear, short definition:\n\n"${ctxMenu.selectionText}"`);
+                sendAiPrompt(`Define this term or phrase. Give a clear, short definition:\n\n"${ctxMenu.selectionText}"`, 'define', { x: ctxMenu.x, y: ctxMenu.y });
               })} />
               <CtxItem label="✦ Explain code" accent onClick={() => ctxAction(() => {
-                sendAiPrompt(`Explain this code step by step. What does it do and how does it work?\n\n\`\`\`\n${ctxMenu.selectionText}\n\`\`\``);
+                sendAiPrompt(`Explain this code step by step. What does it do and how does it work?\n\n\`\`\`\n${ctxMenu.selectionText}\n\`\`\``, 'code', { x: ctxMenu.x, y: ctxMenu.y });
               })} />
               <div className="relative" onMouseEnter={() => setAiSubMenu('translate')} onMouseLeave={() => setAiSubMenu(null)}>
                 <CtxItem label="✦ Translate ▸" accent onClick={() => setAiSubMenu(aiSubMenu === 'translate' ? null : 'translate')} />
@@ -1035,7 +1058,7 @@ export default function WebContent({ tabId: overrideTabId }) {
                   <div className="absolute left-full top-0 ml-0.5 min-w-[120px] py-1.5 rounded-xl bg-[#1c1917]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60">
                     {['English', 'Spanish', 'French', 'German', 'Portuguese', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 'Russian', 'Italian'].map(lang => (
                       <CtxItem key={lang} label={lang} onClick={() => ctxAction(() => {
-                        sendAiPrompt(`Translate the following text to ${lang}. Only output the translation, nothing else:\n\n"${ctxMenu.selectionText}"`);
+                        sendAiPrompt(`Translate the following text to ${lang}. Only output the translation, nothing else:\n\n"${ctxMenu.selectionText}"`, 'translate', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
                     ))}
                   </div>
@@ -1047,19 +1070,19 @@ export default function WebContent({ tabId: overrideTabId }) {
                   {aiSubMenu === 'rewrite' && (
                     <div className="absolute left-full top-0 ml-0.5 min-w-[140px] py-1.5 rounded-xl bg-[#1c1917]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60">
                       <CtxItem label="Fix grammar" onClick={() => ctxAction(() => {
-                        sendAiPrompt(`Fix the grammar and spelling in this text. Only output the corrected text:\n\n"${ctxMenu.selectionText}"`);
+                        sendAiPrompt(`Fix the grammar and spelling in this text. Only output the corrected text:\n\n"${ctxMenu.selectionText}"`, 'rewrite', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
                       <CtxItem label="Make shorter" onClick={() => ctxAction(() => {
-                        sendAiPrompt(`Rewrite this text to be shorter and more concise. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`);
+                        sendAiPrompt(`Rewrite this text to be shorter and more concise. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`, 'rewrite', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
                       <CtxItem label="Make longer" onClick={() => ctxAction(() => {
-                        sendAiPrompt(`Expand this text with more detail. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`);
+                        sendAiPrompt(`Expand this text with more detail. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`, 'rewrite', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
                       <CtxItem label="More formal" onClick={() => ctxAction(() => {
-                        sendAiPrompt(`Rewrite this text in a more formal, professional tone. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`);
+                        sendAiPrompt(`Rewrite this text in a more formal, professional tone. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`, 'rewrite', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
                       <CtxItem label="More casual" onClick={() => ctxAction(() => {
-                        sendAiPrompt(`Rewrite this text in a more casual, friendly tone. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`);
+                        sendAiPrompt(`Rewrite this text in a more casual, friendly tone. Only output the rewritten text:\n\n"${ctxMenu.selectionText}"`, 'rewrite', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
                     </div>
                   )}

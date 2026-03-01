@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Puzzle, Grid3X3, ChevronDown, ExternalLink, X, CloudSun, StickyNote, MessageCircle, Hammer, Music, Braces, Palette, FileSearch, Bot, Store,
+  Puzzle, Grid3X3, ChevronDown, ExternalLink, X, CloudSun, StickyNote, MessageCircle, MessageSquare, Hammer, Music, Braces, Palette, FileSearch, Bot, Store,
   KeyRound, ShieldCheck, Newspaper, Wallet, Calendar, QrCode, Calculator, Ruler, Clock, Wifi,
   Phone, Image as ImageIcon, Pencil, ArrowLeftRight, Smile, Camera, Gauge, Video,
   EyeOff, ShieldAlert, Film, Share2, Trash2, Shield,
@@ -19,7 +19,7 @@ const EXT_ICONS = {
   'color-picker': { type: 'lucide', icon: Palette, color: 'text-violet-400' },
   'regex-tester': { type: 'lucide', icon: FileSearch, color: 'text-cyan-400' },
   'flipprx-miner': { type: 'lucide', icon: Hammer, color: 'text-orange-400' },
-  'mimo-messenger': { type: 'image', src: './mimo.ico' },
+  'mimo-messenger': { type: 'lucide', icon: MessageSquare, color: 'text-violet-400' },
   'community-chat': { type: 'lucide', icon: MessageCircle, color: 'text-teal-400' },
   'password-vault': { type: 'lucide', icon: KeyRound, color: 'text-amber-400' },
   'totp-auth': { type: 'lucide', icon: ShieldCheck, color: 'text-emerald-400' },

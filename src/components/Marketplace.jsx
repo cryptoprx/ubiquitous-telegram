@@ -6,7 +6,7 @@ import {
   Filter, Grid3X3, List, ArrowUpDown, ExternalLink, Globe, Wallet, Lock, Newspaper, Phone,
   KeyRound, ShieldCheck, Calendar, QrCode, Calculator, Ruler, Clock, Wifi,
   Image as ImageIcon, Pencil, ArrowLeftRight, Smile, Camera, Gauge, Video,
-  EyeOff, ShieldAlert, Film, Share2, Shield, Crown, DollarSign,
+  EyeOff, ShieldAlert, Film, Share2, Shield, Crown, DollarSign, Podcast, Waves,
 } from 'lucide-react';
 import useBrowserStore from '../store/browserStore';
 
@@ -47,6 +47,10 @@ const ICON_MAP = {
   'share-2': Share2,
   shield: Shield,
   'trash-2': Trash2,
+  podcast: Podcast,
+  Podcast: Podcast,
+  waves: Waves,
+  Waves: Waves,
 };
 
 const CATEGORIES = [

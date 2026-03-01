@@ -1,5 +1,5 @@
 {
-  "electron/main.js": "0d12f932b59714b875322d4923b76b96db810f603b783d091a4e70b6422c4d32",
-  "electron/preload.js": "660871008784e76ae5404007a81d8458b85dc8e76279e087bed095f17bce1723",
+  "electron/main.js": "e3abe82c8090ea84ab9301aa065383c4a509a40ea7234d2a67f4d9d5c8fa3c4f",
+  "electron/preload.js": "b7a9d425fe0bec05c8b1c4fdf1b5e0bfa95252b067a0cd98dbb2da12d59d8284",
   "extensions\\community-chat\\manifest.json": "284fa5dcf6b0d39b335563d95abcb0a3d04a520e928b8a041a57b93da2d5d5d1"
 }

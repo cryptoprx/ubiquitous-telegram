@@ -8,7 +8,6 @@ import {
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
 
-// ── Extension templates ─────────────────────────────────────────
 const TEMPLATES = {
   blank: {
     label: 'Blank Extension',
@@ -145,7 +144,6 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'cross_storage', label: 'Cross Storage', desc: 'Read/write other extensions\' data', icon: Shield },
 ];
 
-// ── Main DevDashboard Component (Full Page) ─────────────────────
 export default function DevDashboard() {
   const [activeTab, setActiveTab] = useState('docs');
 
@@ -215,7 +213,6 @@ export default function DevDashboard() {
   );
 }
 
-// ── Docs Tab (Full Page) ────────────────────────────────────────
 function DocsTab() {
   const [openSection, setOpenSection] = useState('getting-started');
 
@@ -441,7 +438,6 @@ const info = Flip.browser.getInfo();
   );
 }
 
-// ── Create Tab ──────────────────────────────────────────────────
 function CreateTab() {
   const { addExtension, setExtensions } = useBrowserStore();
   const [step, setStep] = useState('template'); // 'template' | 'config' | 'code'
@@ -759,7 +755,6 @@ function CreateTab() {
   );
 }
 
-// ── Helper UI Components ────────────────────────────────────────
 function CodeBlock({ children, lang }) {
   const [copied, setCopied] = useState(false);
   function handleCopy() {
