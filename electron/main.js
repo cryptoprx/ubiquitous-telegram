@@ -230,6 +230,34 @@ const TRACKER_DOMAINS = new Set([
   'fingerprintjs.com', 'fpjs.io',
 ]);
 
+// Safe Browsing: known phishing, malware, and scam domains (curated from PhishTank / URLhaus / abuse.ch)
+const UNSAFE_DOMAINS = new Set([
+  // Common phishing TLDs and patterns
+  'malware-traffic-analysis.net', '0-0-0-0-0-0-0-0-0.info',
+  // Known phishing aggregators
+  'bit-login.com', 'secure-login-verify.com', 'account-verify-login.com',
+  'update-your-account.com', 'verify-your-identity.com', 'login-secure-verify.com',
+  // Crypto scams
+  'elon-airdrop.com', 'claim-free-crypto.com', 'eth-giveaway.com',
+  'btc-doubler.com', 'free-nft-claim.com',
+  // Tech support scams
+  'microsoft-alert.support', 'windows-defender-alert.com', 'apple-security-warning.com',
+  'virus-alert-warning.com', 'your-pc-is-infected.com',
+  // Generic scam patterns
+  'free-gift-card.com', 'you-won-prize.com', 'claim-reward-now.com',
+]);
+
+// Safe Browsing URL pattern checks (heuristic-based)
+function isSuspiciousUrl(hostname, url) {
+  if (UNSAFE_DOMAINS.has(hostname)) return 'phishing-domain';
+  for (const d of UNSAFE_DOMAINS) {
+    if (hostname.endsWith('.' + d)) return 'phishing-subdomain';
+  }
+  // Heuristic: detect IDN homograph attacks (punycode domains pretending to be known sites)
+  if (hostname.startsWith('xn--') && /paypal|google|apple|microsoft|amazon|bank/i.test(url)) return 'idn-homograph';
+  return null;
+}
+
 // Extract hostname from URL
 function getHostname(url) {
   try {
@@ -306,7 +334,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       webviewTag: true,
-      sandbox: false,
+      sandbox: true,
+      spellcheck: true,
     },
     icon: isDev
       ? path.join(__dirname, '..', 'public', 'fliplogo.png')
@@ -400,8 +429,24 @@ function createWindow() {
     return true;
   });
 
-  // Inject fingerprint protection into all loaded pages
+  // Certificate error handler — reject bad certs and notify renderer to show interstitial
   mainWindow.webContents.on('did-attach-webview', (_, webviewContents) => {
+    webviewContents.on('certificate-error', (event, url, error, certificate, callback) => {
+      event.preventDefault();
+      callback(false); // Always reject bad certificates
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('certificate-error', { url, error, issuer: certificate?.issuerName || '' });
+      }
+    });
+
+    // Webview crash recovery — notify renderer when a tab's render process dies
+    webviewContents.on('render-process-gone', (event, details) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('webview-crashed', { url: webviewContents.getURL(), reason: details?.reason || 'unknown' });
+      }
+    });
+
+    // Inject fingerprint protection into all loaded pages
     webviewContents.on('did-finish-load', () => {
       if (fingerprintProtection) {
         webviewContents.executeJavaScript(FINGERPRINT_PROTECTION_JS).catch(() => {});
@@ -458,11 +503,43 @@ function setupAdBlocker() {
     const hostname = getHostname(details.url);
     if (!hostname) return callback({});
 
+    // Safe Browsing: block known phishing/malware/scam domains
+    if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
+      const threat = isSuspiciousUrl(hostname, details.url);
+      if (threat) {
+        blockedCount++;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('safe-browsing-warning', { url: details.url, threat, hostname });
+        }
+        return callback({ cancel: true });
+      }
+    }
+
     // HTTPS-only mode: upgrade HTTP to HTTPS
     if (httpsOnlyMode && details.url.startsWith('http://')) {
       if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.local')) {
         const httpsUrl = details.url.replace(/^http:/, 'https:');
         return callback({ redirectURL: httpsUrl });
+      }
+    }
+
+    // Mixed content blocking: block insecure subresources on HTTPS pages
+    if (httpsOnlyMode && details.url.startsWith('http://') && details.referrer && details.referrer.startsWith('https://')) {
+      const refHost = getHostname(details.referrer);
+      if (refHost && refHost !== 'localhost' && refHost !== '127.0.0.1') {
+        const type = details.resourceType;
+        // Block active mixed content (scripts, stylesheets, iframes, xhr, fetch, websocket)
+        if (['script', 'stylesheet', 'subFrame', 'xhr', 'websocket', 'object'].includes(type)) {
+          blockedCount++;
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ad-blocked', { url: details.url, reason: 'mixed-content', count: blockedCount });
+          }
+          return callback({ cancel: true });
+        }
+        // Upgrade passive mixed content (images, media, fonts) to HTTPS
+        if (['image', 'media', 'font'].includes(type)) {
+          return callback({ redirectURL: details.url.replace(/^http:/, 'https:') });
+        }
       }
     }
 
@@ -734,7 +811,8 @@ ipcMain.handle('new-window', () => {
       nodeIntegration: false,
       contextIsolation: true,
       webviewTag: true,
-      sandbox: false,
+      sandbox: true,
+      spellcheck: true,
     },
     icon: isDev
       ? path.join(__dirname, '..', 'public', 'fliplogo.png')

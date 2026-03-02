@@ -1,0 +1,11 @@
+{
+  "id": "security-dashboard",
+  "name": "Security Dashboard",
+  "version": "2.0.0",
+  "description": "Real-time security monitor — network connections, threat scanner, startup audit, ad blocker stats, disk usage, and protection status from your Flip Browser.",
+  "author": "Croakworks",
+  "main": "App.jsx",
+  "icon": "ShieldCheck",
+  "permissions": ["security", "adblock", "settings", "proxy", "filesystem"],
+  "category": "security"
+}

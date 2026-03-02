@@ -1,0 +1,11 @@
+{
+  "id": "privacy-dashboard",
+  "name": "Privacy Dashboard",
+  "version": "2.0.0",
+  "description": "Real-time privacy audit — shows actual ad blocker stats, tracker counts, fingerprint protection status, VPN state, and whitelisted sites from your Flip Browser settings.",
+  "author": "Croakworks",
+  "main": "App.jsx",
+  "icon": "Shield",
+  "permissions": ["adblock", "settings", "proxy"],
+  "category": "privacy"
+}

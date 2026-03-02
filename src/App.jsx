@@ -128,6 +128,37 @@ export default function App() {
         // Listen for ad blocked events
         window.flipAPI.onAdBlocked(() => incrementBlocked());
 
+        // Listen for certificate errors — show interstitial on the matching tab
+        window.flipAPI.onCertificateError?.((data) => {
+          try {
+            const state = useBrowserStore.getState();
+            const errHost = new URL(data.url).hostname;
+            const tab = state.tabs.find(t => { try { return new URL(t.url).hostname === errHost; } catch { return false; } });
+            if (tab) state.updateTab(tab.id, { certError: data });
+          } catch {}
+        });
+
+        // Listen for webview crash events — show crash recovery UI
+        window.flipAPI.onWebviewCrashed?.((data) => {
+          try {
+            const state = useBrowserStore.getState();
+            const crashHost = new URL(data.url).hostname;
+            const tab = state.tabs.find(t => { try { return new URL(t.url).hostname === crashHost; } catch { return false; } });
+            if (tab) state.updateTab(tab.id, { crashed: true, crashReason: data.reason });
+          } catch {}
+        });
+
+        // Listen for safe browsing warnings — show danger page
+        window.flipAPI.onSafeBrowsingWarning?.((data) => {
+          try {
+            const state = useBrowserStore.getState();
+            const warnHost = new URL(data.url).hostname;
+            const tab = state.tabs.find(t => { try { return new URL(t.url).hostname === warnHost; } catch { return false; } })
+              || state.tabs.find(t => t.id === state.activeTabId);
+            if (tab) state.updateTab(tab.id, { safeBrowsingWarning: data });
+          } catch {}
+        });
+
         // Listen for open-url-in-tab events
         window.flipAPI.onOpenUrl((url) => addTab(url));
 

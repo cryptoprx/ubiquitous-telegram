@@ -36,6 +36,27 @@ function buildReadingCSS(rs) {
 
 const isPrivateWindow = new URLSearchParams(window.location.search).get('private') === '1';
 
+// Error code descriptions matching Chrome's error pages
+const ERROR_DESCRIPTIONS = {
+  '-2': { title: 'This site can\'t be reached', detail: 'ERR_FAILED' },
+  '-3': null, // Aborted — ignore
+  '-6': { title: 'This site can\'t be reached', detail: 'ERR_FILE_NOT_FOUND' },
+  '-7': { title: 'Too many redirects', detail: 'ERR_TOO_MANY_REDIRECTS' },
+  '-100': { title: 'The connection was reset', detail: 'ERR_CONNECTION_RESET' },
+  '-101': { title: 'The connection was reset', detail: 'ERR_CONNECTION_RESET' },
+  '-102': { title: 'This site can\'t be reached', detail: 'ERR_CONNECTION_REFUSED' },
+  '-104': { title: 'This site can\'t be reached', detail: 'ERR_CONNECTION_FAILED' },
+  '-105': { title: 'This site can\'t be reached', detail: 'ERR_NAME_NOT_RESOLVED — Check your DNS settings' },
+  '-106': { title: 'No internet connection', detail: 'ERR_INTERNET_DISCONNECTED' },
+  '-109': { title: 'This site can\'t provide a secure connection', detail: 'ERR_ADDRESS_UNREACHABLE' },
+  '-118': { title: 'The connection timed out', detail: 'ERR_CONNECTION_TIMED_OUT' },
+  '-130': { title: 'The proxy server is refusing connections', detail: 'ERR_PROXY_CONNECTION_FAILED' },
+  '-200': { title: 'Certificate error', detail: 'ERR_CERT_COMMON_NAME_INVALID' },
+  '-201': { title: 'Certificate error', detail: 'ERR_CERT_DATE_INVALID' },
+  '-202': { title: 'Certificate error', detail: 'ERR_CERT_AUTHORITY_INVALID' },
+  '-324': { title: 'Empty response', detail: 'ERR_EMPTY_RESPONSE' },
+};
+
 function autoTranslateIfNeeded(webview, tabId) {
   const userLang = useBrowserStore.getState().settings?.language || 'en';
   // Only auto-translate if user language is NOT English (English pages are the majority)
@@ -261,7 +282,17 @@ export default function WebContent({ tabId: overrideTabId }) {
 
     webview.addEventListener('did-fail-load', (e) => {
       if (e.errorCode === -3) return; // Aborted
-      useBrowserStore.getState().updateTab(tabId, { loading: false });
+      const errInfo = ERROR_DESCRIPTIONS[String(e.errorCode)];
+      useBrowserStore.getState().updateTab(tabId, {
+        loading: false,
+        error: errInfo ? { code: e.errorCode, title: errInfo.title, detail: errInfo.detail, url: e.validatedURL || '' } : null,
+      });
+    });
+
+    webview.addEventListener('did-navigate', () => {
+      // Clear error state on successful navigation
+      const tab = useBrowserStore.getState().tabs.find(t => t.id === tabId);
+      if (tab?.error) useBrowserStore.getState().updateTab(tabId, { error: null });
     });
 
     // Custom context menu
@@ -1158,6 +1189,79 @@ export default function WebContent({ tabId: overrideTabId }) {
                   Restore Tab
                 </button>
               </div>
+            ) : tab.safeBrowsingWarning ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-red-950/30 px-8 max-w-lg mx-auto">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,80,80,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div className="text-red-400 text-sm font-bold">Dangerous site blocked</div>
+                <div className="text-white/40 text-xs text-center leading-relaxed">
+                  Flip Browser blocked <span className="text-white/60 font-mono">{tab.safeBrowsingWarning.hostname}</span> because it has been flagged as a <span className="text-red-400/80 font-semibold">{tab.safeBrowsingWarning.threat?.replace('-', ' ')}</span> site.
+                  <br /><br />This site may try to steal your passwords, install malware, or trick you into revealing personal information.
+                </div>
+                <button
+                  onClick={() => {
+                    useBrowserStore.getState().updateTab(tab.id, { safeBrowsingWarning: null });
+                    window.dispatchEvent(new CustomEvent('flip-go-back', { detail: { tabId: tab.id } }));
+                  }}
+                  className="px-4 py-2 rounded-lg bg-flip-500/20 border border-flip-500/25 text-xs text-flip-400 font-medium hover:bg-flip-500/30 transition-colors"
+                >
+                  Go Back to Safety
+                </button>
+              </div>
+            ) : tab.crashed ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-0">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,100,100,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                <div className="text-white/50 text-sm font-medium">This page has crashed</div>
+                <div className="text-white/20 text-xs">Reason: {tab.crashReason || 'unknown'}</div>
+                <button
+                  onClick={() => {
+                    useBrowserStore.getState().updateTab(tab.id, { crashed: false, crashReason: null });
+                    const wv = webviewRefs.current[tab.id];
+                    if (wv) wv.reloadIgnoringCache();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-flip-500/20 border border-flip-500/25 text-xs text-flip-400 font-medium hover:bg-flip-500/30 transition-colors"
+                >
+                  Reload Page
+                </button>
+              </div>
+            ) : tab.certError ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-0 px-8 max-w-lg mx-auto">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,100,100,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div className="text-red-400/80 text-sm font-semibold">Your connection is not private</div>
+                <div className="text-white/30 text-xs text-center leading-relaxed">
+                  Attackers might be trying to steal your information from <span className="text-white/50 font-mono">{tab.certError.url}</span>
+                  <br /><span className="text-white/20">Error: {tab.certError.error}</span>
+                  {tab.certError.issuer && <><br />Issuer: {tab.certError.issuer}</>}
+                </div>
+                <button
+                  onClick={() => {
+                    useBrowserStore.getState().updateTab(tab.id, { certError: null });
+                    window.dispatchEvent(new CustomEvent('flip-go-back', { detail: { tabId: tab.id } }));
+                  }}
+                  className="px-4 py-2 rounded-lg bg-flip-500/20 border border-flip-500/25 text-xs text-flip-400 font-medium hover:bg-flip-500/30 transition-colors"
+                >
+                  Go Back to Safety
+                </button>
+              </div>
+            ) : tab.error ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-0 px-8">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div className="text-white/50 text-sm font-medium">{tab.error.title || 'This page can\'t be displayed'}</div>
+                <div className="text-white/20 text-xs font-mono">{tab.error.detail}</div>
+                {tab.error.url && <div className="text-white/15 text-[10px] font-mono truncate max-w-md">{tab.error.url}</div>}
+                <button
+                  onClick={() => {
+                    useBrowserStore.getState().updateTab(tab.id, { error: null });
+                    const wv = webviewRefs.current[tab.id];
+                    if (wv) wv.reloadIgnoringCache();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-flip-500/20 border border-flip-500/25 text-xs text-flip-400 font-medium hover:bg-flip-500/30 transition-colors"
+                >
+                  Try Again
+                </button>
+                <div className="text-white/10 text-[10px] mt-2">
+                  Check your internet connection, DNS settings, and proxy configuration.
+                </div>
+              </div>
             ) : (
               <webview
                 ref={(el) => {
@@ -1169,7 +1273,7 @@ export default function WebContent({ tabId: overrideTabId }) {
                 src={tab.url}
                 style={{ flex: 1, width: '100%', height: '100%' }}
                 allowpopups="true"
-                webpreferences="contextIsolation=yes"
+                webpreferences="contextIsolation=yes, spellcheck=yes"
               />
             )}
           </div>

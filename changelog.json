@@ -1,4 +1,31 @@
 {
+  "1.2.87": [
+    "Certificate error interstitial: bad SSL certs now show a full 'Your connection is not private' warning page",
+    "Webview crash recovery: crashed tabs show 'This page has crashed' with a Reload button instead of going blank",
+    "Safe Browsing: local blocklist + IDN homograph heuristics block phishing/malware/scam domains with a warning page",
+    "Mixed content blocking: HTTP scripts/stylesheets/iframes on HTTPS pages are now blocked; images/fonts auto-upgraded",
+    "Error pages: DNS failures, timeouts, connection refused now show Chrome-style error pages with codes and retry",
+    "BrowserWindow sandbox enabled (sandbox: true) for stronger process isolation",
+    "Spellcheck enabled on main window and all webview tabs",
+    "Preload API: added onCertificateError, onWebviewCrashed, onSafeBrowsingWarning listeners"
+  ],
+  "1.2.86": [
+    "Extension SDK: adblock, settings, proxy, and security-status APIs now exposed to extensions",
+    "Privacy Dashboard v2: real ad blocker stats, runtime protection status, IP check, whitelist view",
+    "Security Dashboard v2: protection badges, ad blocker details, disk usage, blocked request count",
+    "Fixed browser.getInfo() returning hardcoded version — now returns real app version",
+    "Extensions use get-security-status (runtime state) instead of settings file for protection toggles",
+    "Privacy dashboard: WebRTC and fingerprint checks now clarify iframe vs browsing tab context",
+    "Performance view: suspend memory label clarified as estimated",
+    "privacy-dashboard added to trusted extensions list"
+  ],
+  "1.2.85": [
+    "Code structure overhaul: Sidebar split into 20 focused components for faster load and easier maintenance",
+    "State management refactored into 6 Zustand slices (tabs, workspaces, UI, settings, bookmarks, extensions)",
+    "Removed 30+ MB of unused assets from the install package",
+    "Added ESLint, Prettier, and EditorConfig for consistent code quality",
+    "Cleaned up duplicate changelog entries and updated project documentation"
+  ],
   "1.2.84": [
     "Critical fix: AI stream listener leak — every AI query was stacking IPC handlers causing duplicate tokens, memory leaks, and CPU waste",
     "All IPC event listeners now return unsubscribe functions for proper cleanup (preload.js)",

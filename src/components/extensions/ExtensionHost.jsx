@@ -35,6 +35,14 @@ const PERMISSION_MAP = {
   'security.getProcessName':  'security',
   'security.getStartup':      'security',
   'security.scan':            'security',
+  'adblock.getStats':          'adblock',
+  'adblock.isWhitelisted':     'adblock',
+  'adblock.getWhitelist':      'adblock',
+  'adblock.getBlockedCount':   'adblock',
+  'settings.get':              'settings',
+  'proxy.getStatus':           'proxy',
+  'proxy.checkIp':             'proxy',
+  'browser.getSecurityStatus':  'settings',
 };
 
 // These extensions are built by CROAKWORKS and are implicitly trusted
@@ -42,7 +50,7 @@ const TRUSTED_EXTENSION_IDS = [
   'ai-chat', 'community-chat', 'flipprx-miner', 'flipprx-game',
   'mimo-messenger', 'music-player', 'sample-weather', 'sample-notes',
   'color-picker', 'json-formatter', 'regex-tester', 'xrpl-wallet',
-  'flip-call', 'file-cleaner', 'security-dashboard',
+  'flip-call', 'file-cleaner', 'security-dashboard', 'privacy-dashboard',
 ];
 
 const rateLimiters = {};
@@ -171,10 +179,27 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
           scan() { return Flip._postMessage('security.scan'); },
         },
 
+        adblock: {
+          getStats() { return Flip._postMessage('adblock.getStats'); },
+          isWhitelisted(hostname) { return Flip._postMessage('adblock.isWhitelisted', { hostname }); },
+          getWhitelist() { return Flip._postMessage('adblock.getWhitelist'); },
+          getBlockedCount() { return Flip._postMessage('adblock.getBlockedCount'); },
+        },
+
+        settings: {
+          get() { return Flip._postMessage('settings.get'); },
+        },
+
+        proxy: {
+          getStatus() { return Flip._postMessage('proxy.getStatus'); },
+          checkIp() { return Flip._postMessage('proxy.checkIp'); },
+        },
+
         browser: {
           getInfo() {
-            return { name: 'Flip Browser', version: '1.0.0' };
+            return { name: 'Flip Browser', version: '${typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "unknown"}' };
           },
+          getSecurityStatus() { return Flip._postMessage('browser.getSecurityStatus'); },
           executeScript(script) { return Flip._postMessage('browser.executeScript', { script }); },
         },
 
@@ -620,6 +645,63 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
             return;
           }
           result = { error: 'Security API not available' }; break;
+        }
+        case 'adblock.getStats': {
+          if (window.flipAPI?.adblockStats) {
+            window.flipAPI.adblockStats().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'adblock.isWhitelisted': {
+          const abHost = sanitizeString(payload?.hostname, 256);
+          if (window.flipAPI?.adblockIsWhitelisted) {
+            window.flipAPI.adblockIsWhitelisted(abHost).then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'adblock.getWhitelist': {
+          if (window.flipAPI?.adblockGetWhitelist) {
+            window.flipAPI.adblockGetWhitelist().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'adblock.getBlockedCount': {
+          if (window.flipAPI?.getBlockedCount) {
+            window.flipAPI.getBlockedCount().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'settings.get': {
+          if (window.flipAPI?.getSettings) {
+            window.flipAPI.getSettings().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'proxy.getStatus': {
+          if (window.flipAPI?.getProxyStatus) {
+            window.flipAPI.getProxyStatus().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'proxy.checkIp': {
+          if (window.flipAPI?.checkIp) {
+            window.flipAPI.checkIp().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
+        }
+        case 'browser.getSecurityStatus': {
+          if (window.flipAPI?.getSecurityStatus) {
+            window.flipAPI.getSecurityStatus().then(r => { iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*'); });
+            return;
+          }
+          result = null; break;
         }
         case 'fs.listDir': {
           if (!TRUSTED_EXTENSION_IDS.includes(extension.id)) {

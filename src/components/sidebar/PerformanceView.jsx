@@ -110,7 +110,7 @@ function PerformanceView() {
                 </div>
                 <div className="text-center">
                   <div className="text-[11px] font-bold text-emerald-400/70">{stats.estimatedSavedMB > 0 ? `~${stats.estimatedSavedMB}MB` : '—'}</div>
-                  <div className="text-[7px] text-white/20">Saved</div>
+                  <div className="text-[7px] text-white/20">Est. Saved</div>
                 </div>
               </div>
               {/* Memory bar */}

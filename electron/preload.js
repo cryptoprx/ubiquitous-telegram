@@ -153,6 +153,21 @@ contextBridge.exposeInMainWorld('flipAPI', {
   setHttpsOnly: (enabled) => ipcRenderer.invoke('set-https-only', enabled),
   setFingerprintProtection: (enabled) => ipcRenderer.invoke('set-fingerprint-protection', enabled),
   getSecurityStatus: () => ipcRenderer.invoke('get-security-status'),
+  onCertificateError: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('certificate-error', handler);
+    return () => ipcRenderer.removeListener('certificate-error', handler);
+  },
+  onWebviewCrashed: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('webview-crashed', handler);
+    return () => ipcRenderer.removeListener('webview-crashed', handler);
+  },
+  onSafeBrowsingWarning: (cb) => {
+    const handler = (_, data) => cb(data);
+    ipcRenderer.on('safe-browsing-warning', handler);
+    return () => ipcRenderer.removeListener('safe-browsing-warning', handler);
+  },
 
   // Permission request prompt
   respondPermission: (id, allowed) => ipcRenderer.invoke('respond-permission', id, allowed),

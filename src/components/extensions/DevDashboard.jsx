@@ -353,7 +353,7 @@ Flip.ui.setBadge('3');
 
 // Get browser info
 const info = Flip.browser.getInfo();
-// → {name: 'Flip Browser', version: '1.0.0'}`}</CodeBlock>
+// → {name: 'Flip Browser', version: '<current version>'}`}</CodeBlock>
         </div>
       ),
     },
