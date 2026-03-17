@@ -3,6 +3,22 @@ import { Keyboard, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
 
+const SHORTCUT_LABELS = {
+  newTab: 'New Tab',
+  closeTab: 'Close Tab',
+  reopenTab: 'Reopen Closed Tab',
+  commandPalette: 'Command Palette',
+  focusAddress: 'Focus Address Bar',
+  toggleSidebar: 'Toggle Sidebar',
+  splitView: 'Split View',
+  devTools: 'Developer Tools',
+  reload: 'Reload Page',
+  zoomIn: 'Zoom In',
+  zoomOut: 'Zoom Out',
+  zoomReset: 'Reset Zoom',
+  pip: 'Picture in Picture',
+};
+
 function ShortcutsView() {
   const { shortcuts, setShortcuts } = useBrowserStore();
   const [recording, setRecording] = useState(null);

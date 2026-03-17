@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  ArrowLeft, ArrowRight, RotateCw, Home, Star, StarOff,
+  ArrowLeft, ArrowRight, RotateCw, Star,
   Shield, ShieldCheck, Lock, Unlock, PanelLeft, Search,
   Command, SplitSquareHorizontal, X, BookOpen, PictureInPicture2,
   Camera, Languages, MoreVertical, Puzzle, Download, Sparkles,
   Printer, FileDown, Scissors, Store, Bot, Copy, Check, Loader2,
+  Minus, Square, ShieldOff,
 } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../store/browserStore';
 import { t } from '../i18n';
+import FlipLogo from './FlipLogo';
+
+const isPrivate = new URLSearchParams(window.location.search).get('private') === '1';
+const isMac = navigator.userAgent.includes('Mac');
 
 export default function AddressBar() {
   const {
@@ -210,62 +215,89 @@ export default function AddressBar() {
   function goHome() {
     updateTab(activeTabId, { url: 'flip://newtab', title: 'New Tab', loading: false });
     window.dispatchEvent(new CustomEvent('flip-navigate', { detail: { tabId: activeTabId, url: 'flip://newtab' } }));
+    sileo.info("Navigated home");
   }
 
   function toggleBookmark() {
+    if (!activeTab || !activeTab.url || activeTab.url.startsWith('flip://')) return;
     if (isBookmarked) {
-      const bm = bookmarks.find((b) => b.url === activeTab.url);
-      if (bm) removeBookmark(bm.id);
+      removeBookmark(activeTab.url);
+      sileo.info("Bookmark removed");
     } else {
-      addBookmark({ url: activeTab.url, title: activeTab.title });
+      addBookmark({
+        title: activeTab.title || activeTab.url,
+        url: activeTab.url,
+        favicon: activeTab.favicon,
+        dateAdded: Date.now()
+      });
+      sileo.success("Bookmark added!");
     }
   }
 
+  const minimize = () => window.flipAPI?.minimize();
+  const maximizeWin = () => window.flipAPI?.maximize();
+  const closeWin = () => window.flipAPI?.close();
+
   return (
-    <div className="relative flex items-center gap-2 px-3 py-2 bg-surface-1/80 backdrop-blur-md border-b border-white/5 z-30">
+    <div className="drag-region relative flex items-center gap-1.5 px-2.5 h-10 bg-surface-1/70 backdrop-blur-2xl border-b border-white/[0.06] z-30">
+      {/* macOS: spacer for native traffic lights */}
+      {isMac && <div className="w-[70px] flex-shrink-0" />}
+
       {/* Sidebar toggle (when collapsed) */}
       {!sidebarOpen && (
         <button
           onClick={toggleSidebar}
-          className="btn-ghost p-1.5"
+          className="btn-ghost p-1 no-drag"
           title="Open sidebar"
         >
-          <PanelLeft size={15} />
+          <PanelLeft size={14} />
         </button>
       )}
 
+      {/* FlipLogo — doubles as Home button */}
+      <button
+        onClick={goHome}
+        className="no-drag flex items-center gap-1.5 px-1 rounded-[8px] hover:bg-white/[0.06] transition-all duration-200 flex-shrink-0"
+        title={t('home', lang)}
+      >
+        <FlipLogo size={18} className="flip-logo" />
+        {isPrivate && (
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-[6px] bg-purple-500/10 border border-purple-500/15">
+            <ShieldOff size={8} className="text-purple-400/80" />
+            <span className="text-[8px] text-purple-400/80 font-medium uppercase tracking-wider">P</span>
+          </div>
+        )}
+      </button>
+
       {/* Navigation buttons */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0 no-drag">
         <NavButton
           onClick={goBack}
           disabled={!activeTab?.canGoBack}
           title={t('back', lang)}
         >
-          <ArrowLeft size={15} />
+          <ArrowLeft size={14} />
         </NavButton>
         <NavButton
           onClick={goForward}
           disabled={!activeTab?.canGoForward}
           title={t('forward', lang)}
         >
-          <ArrowRight size={15} />
+          <ArrowRight size={14} />
         </NavButton>
         <NavButton onClick={reload} title={t('reload', lang)}>
-          <RotateCw size={14} />
-        </NavButton>
-        <NavButton onClick={goHome} title={t('home', lang)}>
-          <Home size={14} />
+          <RotateCw size={13} />
         </NavButton>
       </div>
 
       {/* Address input */}
-      <form onSubmit={handleNavigate} className="flex-1 mx-1">
+      <form onSubmit={handleNavigate} className="no-drag flex-1 mx-1">
         <div
           className={clsx(
-            'flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200',
+            'flex items-center gap-2 px-3 py-1.5 rounded-[10px] transition-all duration-200',
             isFocused
-              ? 'bg-white/10 border border-flip-500/30 ring-1 ring-flip-500/15 shadow-lg shadow-flip-500/5'
-              : 'bg-white/5 border border-white/5 hover:border-white/10'
+              ? 'bg-white/[0.08] border border-flip-500/25 shadow-mac'
+              : 'bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1]'
           )}
         >
           {/* Security indicator */}
@@ -294,7 +326,7 @@ export default function AddressBar() {
             }}
             onBlur={() => setIsFocused(false)}
             placeholder={t('searchOrUrl', lang)}
-            className="flex-1 bg-transparent text-xs text-white placeholder-white/30 outline-none"
+            className="flex-1 bg-transparent text-[13px] text-white/90 placeholder-white/25 outline-none"
             spellCheck={false}
           />
 
@@ -306,7 +338,7 @@ export default function AddressBar() {
 
         {/* Loading progress bar */}
         {activeTab?.loading && (
-          <div className="absolute left-0 right-0 bottom-0 h-0.5 overflow-hidden">
+          <div className="absolute left-0 right-0 bottom-0 h-[2px] overflow-hidden">
             <div className="loading-bar" />
           </div>
         )}
@@ -331,6 +363,7 @@ export default function AddressBar() {
                     onClick={() => {
                       navigator.clipboard.writeText(aiResponse);
                       setAiCopied(true);
+                      sileo.success("Response copied!");
                       setTimeout(() => setAiCopied(false), 1500);
                     }}
                     className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
@@ -366,7 +399,6 @@ export default function AddressBar() {
               <button
                 onClick={() => {
                   setAiOpen(false);
-                  setSidebarView('extensions');
                   window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: 'ai-chat' } }));
                   setTimeout(() => {
                     window.dispatchEvent(new CustomEvent('flip-ai-prompt', { detail: { prompt: aiQuery } }));
@@ -382,7 +414,7 @@ export default function AddressBar() {
       )}
 
       {/* Action buttons */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 no-drag">
         {/* Bookmark */}
         <NavButton
           onClick={toggleBookmark}
@@ -464,7 +496,7 @@ export default function AddressBar() {
             <MoreVertical size={14} className={moreOpen ? 'text-flip-400' : ''} />
           </NavButton>
           {moreOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 py-1 rounded-xl bg-surface-3 border border-white/10 shadow-2xl shadow-black/50 z-50 animate-fade-in">
+            <div className="absolute right-0 top-full mt-1.5 w-48 py-1.5 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg z-50 animate-fade-in">
               <OverflowItem
                 icon={PictureInPicture2}
                 label="Picture-in-Picture"
@@ -540,7 +572,6 @@ export default function AddressBar() {
                       icon={Puzzle}
                       label={ext.manifest.toolbar_action.label || ext.manifest.name}
                       onClick={() => {
-                        if (sidebarView !== 'extensions') setSidebarView('extensions');
                         window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: ext.id } }));
                         setMoreOpen(false);
                       }}
@@ -568,6 +599,33 @@ export default function AddressBar() {
           <Command size={14} />
         </NavButton>
       </div>
+
+      {/* Window controls — Windows/Linux only (macOS uses native traffic lights) */}
+      {!isMac && (
+        <div className="flex items-center gap-0.5 ml-1 no-drag flex-shrink-0">
+          <button
+            onClick={minimize}
+            className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white/80 rounded-[8px] hover:bg-white/[0.06] transition-all duration-200"
+            aria-label="Minimize"
+          >
+            <Minus size={12} />
+          </button>
+          <button
+            onClick={maximizeWin}
+            className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white/80 rounded-[8px] hover:bg-white/[0.06] transition-all duration-200"
+            aria-label="Maximize"
+          >
+            <Square size={9} />
+          </button>
+          <button
+            onClick={closeWin}
+            className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white rounded-[8px] hover:bg-red-500/50 transition-all duration-200"
+            aria-label="Close"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -579,10 +637,10 @@ function NavButton({ children, onClick, disabled, title }) {
       disabled={disabled}
       title={title}
       className={clsx(
-        'flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-100',
+        'flex items-center justify-center w-7 h-7 rounded-[8px] transition-all duration-200',
         disabled
           ? 'text-white/15 cursor-default'
-          : 'text-white/50 hover:text-white hover:bg-white/10 cursor-pointer'
+          : 'text-white/40 hover:text-white/80 hover:bg-white/[0.06] cursor-pointer'
       )}
     >
       {children}
@@ -638,11 +696,11 @@ function ShieldButton({ blockedCount, activeTab, isInternal, lang }) {
         </div>
       </NavButton>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-64 rounded-xl bg-surface-3 border border-white/10 shadow-2xl shadow-black/50 z-50 animate-fade-in overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-white/5">
+        <div className="absolute right-0 top-full mt-1.5 w-64 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg z-50 animate-fade-in overflow-hidden">
+          <div className="px-3.5 py-3 border-b border-white/[0.06]">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] text-white/80 font-semibold">Ad & Tracker Blocker</span>
-              <span className="text-[9px] text-accent-400 font-mono">{blockedCount} blocked</span>
+              <span className="text-[12px] text-white/80 font-medium">Ad & Tracker Blocker</span>
+              <span className="text-[10px] text-accent-400/80 font-mono">{blockedCount} blocked</span>
             </div>
             {hostname && !isInternal && (
               <div className="flex items-center justify-between mt-2">
@@ -705,14 +763,15 @@ function OverflowItem({ icon: Icon, label, onClick, disabled }) {
     <button
       onClick={disabled ? undefined : onClick}
       className={clsx(
-        'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100',
+        'w-full flex items-center gap-2.5 px-3.5 py-2 text-left rounded-[8px] mx-1 transition-colors duration-200',
         disabled
           ? 'text-white/15 cursor-default'
-          : 'text-white/60 hover:text-white hover:bg-white/[0.06] cursor-pointer'
+          : 'text-white/60 hover:text-white/85 hover:bg-white/[0.06] cursor-pointer'
       )}
+      style={{ width: 'calc(100% - 8px)' }}
     >
-      <Icon size={13} />
-      <span className="text-[11px]">{label}</span>
+      <Icon size={14} />
+      <span className="text-[12px] font-medium">{label}</span>
     </button>
   );
 }

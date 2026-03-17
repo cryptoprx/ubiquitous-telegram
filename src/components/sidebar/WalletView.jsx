@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, RefreshCw, Lock, Wallet } from 'lucide-react';
 import clsx from 'clsx';
+import { sileo } from 'sileo';
 
 function WalletView() {
   const [walletState, setWalletState] = useState('loading');
@@ -272,7 +273,7 @@ function WalletView() {
             <div className="text-[9px] text-red-400/70 mb-1 font-medium">Secret Recovery Phrase — never share this</div>
             <div className="p-2 rounded-lg bg-black/30 border border-red-500/20 text-[10px] text-white/60 font-mono break-all select-all">{mnemonic}</div>
             <div className="flex gap-1.5 mt-2">
-              <button onClick={() => { navigator.clipboard.writeText(mnemonic); }} className="flex-1 py-1.5 rounded-lg bg-white/[0.04] text-[9px] text-white/40 hover:text-white/60">Copy</button>
+              <button onClick={() => { navigator.clipboard.writeText(mnemonic); sileo.success('Mnemonic copied!'); }} className="flex-1 py-1.5 rounded-lg bg-white/[0.04] text-[9px] text-white/40 hover:text-white/60">Copy</button>
               <button onClick={() => setShowMnemonic(false)} className="flex-1 py-1.5 rounded-lg bg-white/[0.04] text-[9px] text-white/40 hover:text-white/60">Close</button>
             </div>
           </div>

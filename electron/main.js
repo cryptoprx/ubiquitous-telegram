@@ -373,7 +373,7 @@ function createWindow() {
       return true;
     }
     // Always allow safe permissions
-    const safePerms = ['clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock'];
+    const safePerms = ['clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock', 'hid'];
     if (safePerms.includes(permission)) return true;
     // Auto-allow for file:// and empty origins (app content)
     if (!requestingOrigin || requestingOrigin === 'null' || requestingOrigin.startsWith('file://')) return true;
@@ -428,6 +428,20 @@ function createWindow() {
     }
     return true;
   });
+
+  // WebAuthn / Passkeys support — allow platform authenticator and HID security keys
+  session.defaultSession.on('select-hid-device', (event, details, callback) => {
+    event.preventDefault();
+    // Auto-select the first available device (typically the platform authenticator or a USB key)
+    if (details.deviceList && details.deviceList.length > 0) {
+      callback(details.deviceList[0].deviceId);
+    } else {
+      callback('');
+    }
+  });
+
+  session.defaultSession.on('hid-device-added', () => {});
+  session.defaultSession.on('hid-device-removed', () => {});
 
   // Certificate error handler — reject bad certs and notify renderer to show interstitial
   mainWindow.webContents.on('did-attach-webview', (_, webviewContents) => {

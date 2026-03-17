@@ -35,54 +35,65 @@ function UpdateChecker() {
   return (
     <div className="space-y-2">
       {status === 'idle' && (
-        <button onClick={checkNow} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-flip-500/10 border border-flip-500/20 text-[10px] text-flip-400 font-medium hover:bg-flip-500/20 transition-colors">
+        <button onClick={checkNow} className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-flip-500/10 border border-flip-500/20 text-[10px] text-flip-400 font-medium hover:bg-flip-500/20 transition-colors">
           <RefreshCw size={10} /> Check for Updates
         </button>
       )}
       {status === 'checking' && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-[10px] text-white/50">
-          <RefreshCw size={10} className="animate-spin" /> Checking for updates...
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] bg-white/[0.03] border border-white/[0.06] text-[10px] text-white/50">
+          <RefreshCw size={10} className="animate-spin text-flip-400/60" /> Checking for updates...
         </div>
       )}
       {status === 'up-to-date' && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-3 py-2.5 rounded-[10px] bg-white/[0.02] border border-white/[0.04]">
           <div className="flex items-center gap-2 text-[10px] text-accent-400/70">
             <CheckCircle2 size={10} /> You're up to date
           </div>
-          <button onClick={checkNow} className="text-[9px] text-white/30 hover:text-white/50 transition-colors">Check again</button>
+          <button onClick={checkNow} className="text-[9px] text-white/25 hover:text-white/50 transition-colors">Check again</button>
         </div>
       )}
       {status === 'available' && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-[10px] text-flip-400">
-            <ZapIcon size={10} /> v{info?.version} available
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] bg-flip-500/5 border border-flip-500/15">
+            <div className="w-2 h-2 rounded-full bg-flip-500 animate-pulse shrink-0" />
+            <span className="text-[10px] text-flip-400 font-medium">v{info?.version} available</span>
           </div>
-          <button onClick={() => window.flipAPI?.downloadUpdate?.()} className="w-full px-3 py-2 rounded-lg bg-flip-500/20 border border-flip-500/25 text-[10px] text-flip-400 font-medium hover:bg-flip-500/30 transition-colors">
+          <button onClick={() => window.flipAPI?.downloadUpdate?.()} className="w-full px-3 py-2.5 rounded-[10px] bg-flip-500/15 border border-flip-500/20 text-[10px] text-flip-400 font-medium hover:bg-flip-500/25 transition-colors">
             Download Update
           </button>
         </div>
       )}
       {status === 'downloading' && (
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-[10px] text-white/50">
-            <Download size={10} className="animate-bounce" /> Downloading... {Math.round(progress)}%
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-[10px] bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex items-center gap-2 text-[10px] text-white/50">
+              <Download size={10} className="text-flip-400/60" /> Downloading...
+            </div>
+            <span className="text-[9px] text-white/30 font-mono">{Math.round(progress)}%</span>
           </div>
-          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-flip-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${progress}%`,
+                background: 'linear-gradient(90deg, #ff6234, #f97316, #fbbf24)',
+                boxShadow: '0 0 6px rgba(249,115,22,0.3)',
+              }}
+            />
           </div>
         </div>
       )}
       {status === 'ready' && (
-        <button onClick={() => window.flipAPI?.installUpdate?.()} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent-400/20 border border-accent-400/25 text-[10px] text-accent-400 font-medium hover:bg-accent-400/30 transition-colors">
+        <button onClick={() => window.flipAPI?.installUpdate?.()} className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] bg-accent-400/15 border border-accent-400/20 text-[10px] text-accent-400 font-medium hover:bg-accent-400/25 transition-colors">
           <CheckCircle2 size={10} /> Install & Restart
         </button>
       )}
       {status === 'error' && (
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-[10px] text-red-400/70">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-[10px] bg-red-500/5 border border-red-500/10 text-[10px] text-red-400/70">
             <AlertTriangle size={10} /> {info?.message || 'Update check failed'}
           </div>
-          <button onClick={checkNow} className="text-[9px] text-white/30 hover:text-white/50 transition-colors">Try again</button>
+          <button onClick={checkNow} className="text-[9px] text-white/25 hover:text-white/50 ml-1 transition-colors">Try again</button>
         </div>
       )}
     </div>

@@ -8,19 +8,19 @@
   --flip-500: 255 98 52;
   --accent-400: 45 212 168;
   --accent-500: 20 184 166;
-  --surface-0: 12 10 9;
-  --surface-1: 28 25 23;
-  --surface-2: 38 31 27;
-  --surface-3: 48 41 36;
-  --surface-4: 59 51 45;
-  --surface-5: 71 64 56;
+  --surface-0: 16 16 16;
+  --surface-1: 24 24 24;
+  --surface-2: 32 32 32;
+  --surface-3: 42 42 42;
+  --surface-4: 54 54 54;
+  --surface-5: 68 68 68;
   --text-base: 255 255 255;
   --border-base: 255 255 255;
-  --glass-bg: rgba(255,255,255,0.05);
-  --glass-border: rgba(255,255,255,0.1);
-  --glass-hover: rgba(255,255,255,0.1);
-  --scrollbar-thumb: rgba(255,122,77,0.2);
-  --scrollbar-hover: rgba(255,122,77,0.35);
+  --glass-bg: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-hover: rgba(255,255,255,0.08);
+  --scrollbar-thumb: rgba(255,255,255,0.1);
+  --scrollbar-hover: rgba(255,255,255,0.18);
 }
 
 /* ── Theme: Ocean Blue ── */
@@ -29,14 +29,14 @@
   --flip-500: 59 130 246;
   --accent-400: 34 211 238;
   --accent-500: 6 182 212;
-  --surface-0: 8 10 15;
-  --surface-1: 15 20 30;
-  --surface-2: 22 28 40;
-  --surface-3: 30 38 52;
-  --surface-4: 40 48 64;
-  --surface-5: 50 58 74;
-  --scrollbar-thumb: rgba(59,130,246,0.2);
-  --scrollbar-hover: rgba(59,130,246,0.35);
+  --surface-0: 12 14 20;
+  --surface-1: 18 22 32;
+  --surface-2: 26 30 42;
+  --surface-3: 34 40 54;
+  --surface-4: 44 50 66;
+  --surface-5: 56 62 78;
+  --scrollbar-thumb: rgba(59,130,246,0.15);
+  --scrollbar-hover: rgba(59,130,246,0.28);
 }
 
 /* ── Theme: Midnight Purple ── */
@@ -45,14 +45,14 @@
   --flip-500: 168 85 247;
   --accent-400: 244 114 182;
   --accent-500: 236 72 153;
-  --surface-0: 10 8 15;
-  --surface-1: 20 16 30;
-  --surface-2: 28 22 42;
-  --surface-3: 38 30 55;
-  --surface-4: 48 40 68;
-  --surface-5: 58 50 78;
-  --scrollbar-thumb: rgba(168,85,247,0.2);
-  --scrollbar-hover: rgba(168,85,247,0.35);
+  --surface-0: 14 12 20;
+  --surface-1: 22 18 32;
+  --surface-2: 30 26 44;
+  --surface-3: 40 34 56;
+  --surface-4: 50 44 68;
+  --surface-5: 62 56 80;
+  --scrollbar-thumb: rgba(168,85,247,0.15);
+  --scrollbar-hover: rgba(168,85,247,0.28);
 }
 
 /* ── Theme: Forest Green ── */
@@ -61,14 +61,14 @@
   --flip-500: 34 197 94;
   --accent-400: 163 230 53;
   --accent-500: 132 204 22;
-  --surface-0: 8 12 8;
-  --surface-1: 16 24 16;
-  --surface-2: 22 32 22;
-  --surface-3: 30 42 30;
-  --surface-4: 38 52 38;
-  --surface-5: 48 62 48;
-  --scrollbar-thumb: rgba(34,197,94,0.2);
-  --scrollbar-hover: rgba(34,197,94,0.35);
+  --surface-0: 12 16 12;
+  --surface-1: 18 26 18;
+  --surface-2: 26 34 26;
+  --surface-3: 34 44 34;
+  --surface-4: 44 56 44;
+  --surface-5: 56 68 56;
+  --scrollbar-thumb: rgba(34,197,94,0.15);
+  --scrollbar-hover: rgba(34,197,94,0.28);
 }
 
 /* ── Theme: Rose Gold ── */
@@ -77,14 +77,14 @@
   --flip-500: 244 63 94;
   --accent-400: 251 191 36;
   --accent-500: 234 179 8;
-  --surface-0: 15 10 12;
-  --surface-1: 28 20 24;
-  --surface-2: 38 28 32;
-  --surface-3: 50 38 42;
-  --surface-4: 62 48 52;
-  --surface-5: 74 58 62;
-  --scrollbar-thumb: rgba(244,63,94,0.2);
-  --scrollbar-hover: rgba(244,63,94,0.35);
+  --surface-0: 18 14 16;
+  --surface-1: 28 22 26;
+  --surface-2: 38 30 34;
+  --surface-3: 50 42 46;
+  --surface-4: 62 54 58;
+  --surface-5: 74 66 70;
+  --scrollbar-thumb: rgba(244,63,94,0.15);
+  --scrollbar-hover: rgba(244,63,94,0.28);
 }
 
 /* ── Theme: Monochrome ── */
@@ -93,14 +93,14 @@
   --flip-500: 160 160 160;
   --accent-400: 200 200 200;
   --accent-500: 180 180 180;
-  --surface-0: 10 10 10;
+  --surface-0: 14 14 14;
   --surface-1: 22 22 22;
   --surface-2: 30 30 30;
   --surface-3: 40 40 40;
-  --surface-4: 50 50 50;
-  --surface-5: 60 60 60;
-  --scrollbar-thumb: rgba(160,160,160,0.2);
-  --scrollbar-hover: rgba(160,160,160,0.35);
+  --surface-4: 52 52 52;
+  --surface-5: 64 64 64;
+  --scrollbar-thumb: rgba(160,160,160,0.12);
+  --scrollbar-hover: rgba(160,160,160,0.22);
 }
 
 
@@ -187,48 +187,48 @@
 
 @layer components {
   .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    @apply bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08];
   }
 
   .glass-hover {
-    @apply hover:bg-white/10 transition-colors duration-150;
+    @apply hover:bg-white/[0.07] transition-colors duration-200;
   }
 
   .btn-ghost {
-    @apply px-3 py-1.5 rounded-full text-sm text-white/70 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer;
+    @apply px-3 py-2 rounded-[12px] text-[13px] font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer;
   }
 
   .btn-primary {
-    @apply px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-flip-500 to-flip-400 hover:from-flip-400 hover:to-flip-500 text-white transition-all duration-200 cursor-pointer shadow-lg shadow-flip-500/20;
+    @apply px-5 py-2.5 rounded-[12px] text-[13px] font-semibold bg-flip-500 hover:bg-flip-400 text-white transition-all duration-200 cursor-pointer shadow-md shadow-flip-500/15;
   }
 
   .btn-accent {
-    @apply px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-accent-500 to-accent-400 hover:from-accent-400 hover:to-accent-500 text-white transition-all duration-200 cursor-pointer;
+    @apply px-5 py-2.5 rounded-[12px] text-[13px] font-semibold bg-accent-500 hover:bg-accent-400 text-white transition-all duration-200 cursor-pointer;
   }
 
   .input-base {
-    @apply bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-flip-500/50 focus:bg-white/10 transition-all duration-200;
+    @apply bg-white/[0.04] border border-white/[0.08] rounded-[12px] px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none focus:border-flip-500/40 focus:bg-white/[0.06] transition-all duration-200;
   }
 
   .tab-active {
-    @apply bg-gradient-to-r from-flip-500/15 to-transparent text-white border-l-2 border-flip-500;
+    @apply bg-white/[0.06] text-white border-l-2 border-flip-500;
   }
 
   .tab-inactive {
-    @apply text-white/45 hover:text-white/75 hover:bg-white/5 border-l-2 border-transparent;
+    @apply text-white/45 hover:text-white/70 hover:bg-white/[0.04] border-l-2 border-transparent;
   }
 
   .sidebar-section {
-    @apply px-3 py-2 text-[10px] font-bold text-white/30 uppercase tracking-widest;
+    @apply px-3 py-2 text-[10px] font-medium text-white/30 uppercase tracking-widest;
   }
 
   .tooltip {
-    @apply absolute z-50 px-2.5 py-1 text-xs bg-surface-4 text-white/90 rounded-full shadow-lg border border-white/10 whitespace-nowrap;
+    @apply absolute z-50 px-3 py-1.5 text-[11px] font-medium bg-surface-3/95 backdrop-blur-xl text-white/85 rounded-[10px] shadow-lg shadow-black/20 border border-white/[0.08] whitespace-nowrap;
   }
 
   .loading-bar {
-    @apply h-0.5 rounded-full;
-    background: linear-gradient(90deg, #ff6234, #2dd4a8, #ff6234);
+    @apply h-[2px] rounded-full;
+    background: linear-gradient(90deg, rgb(var(--flip-500)), rgb(var(--accent-400)), rgb(var(--flip-500)));
     background-size: 200% 100%;
     animation: shimmerBar 1.5s ease-in-out infinite;
   }
@@ -248,14 +248,14 @@
   }
 
   .flip-card-surface {
-    @apply bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    @apply bg-white/[0.04] border border-white/[0.08] rounded-2xl backdrop-blur-sm;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .flip-card-surface:hover {
-    @apply bg-white/10 border-white/15;
+    @apply bg-white/[0.07] border-white/[0.12];
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,122,77,0.05);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.04);
   }
 }
 
@@ -289,8 +289,8 @@
 
 /* Command palette overlay */
 .command-overlay {
-  background: rgba(12, 10, 9, 0.7);
-  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(20px);
 }
 
 /* Extension iframe styles */
@@ -301,7 +301,7 @@
 
 /* Split view divider */
 .split-divider {
-  @apply w-1 bg-white/10 hover:bg-flip-500/50 cursor-col-resize transition-colors duration-150;
+  @apply w-[3px] bg-white/[0.06] hover:bg-flip-500/40 cursor-col-resize transition-colors duration-200;
 }
 
 /* Flip logo spin on hover */
@@ -310,5 +310,29 @@
 }
 .flip-logo:hover {
   transform: rotateY(180deg);
+}
+
+/* macOS-style vibrancy material for floating panels */
+.vibrancy {
+  background: rgba(30, 30, 30, 0.88);
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+}
+
+/* macOS-style toggle switch */
+.macos-toggle {
+  @apply relative w-[36px] h-[22px] rounded-full cursor-pointer transition-colors duration-200;
+  background: rgba(255,255,255,0.1);
+}
+.macos-toggle.active {
+  background: rgb(var(--accent-400));
+}
+.macos-toggle .macos-toggle-knob {
+  @apply absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white shadow-sm;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.macos-toggle.active .macos-toggle-knob {
+  transform: translateX(14px);
 }
 

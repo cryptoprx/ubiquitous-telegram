@@ -1,13 +1,13 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { Loader2, KeyRound, CheckCircle2, AlertCircle, RefreshCw, Send, X, Copy, Maximize2, Monitor, Phone, Mic, Video, ShieldCheck, HelpCircle, Code2, Play, Download, Search, Settings } from 'lucide-react';
+import { Toaster, sileo } from 'sileo';
 import useBrowserStore from './store/browserStore';
-import TitleBar from './components/TitleBar';
 import Sidebar from './components/Sidebar';
 import AddressBar from './components/AddressBar';
 import WebContent from './components/WebContent';
 import CommandPalette from './components/CommandPalette';
 import NewTabPage from './components/NewTabPage';
-import ExtensionPanel from './components/extensions/ExtensionPanel';
+import ExtensionDock from './components/extensions/ExtensionDock';
 import ExtensionHost from './components/extensions/ExtensionHost';
 import DevDashboard from './components/extensions/DevDashboard';
 import BookmarksBar from './components/BookmarksBar';
@@ -327,7 +327,6 @@ export default function App() {
   const isStudio = activeTab?.url === 'flip://studio';
   const isExtTab = activeTab?.url?.startsWith('flip://ext/');
   const extTabId = isExtTab ? activeTab.url.replace('flip://ext/', '') : null;
-  const showExtensionPanel = sidebarView === 'extensions';
 
 
   // Tab suspension: auto-suspend inactive tabs after timeout
@@ -365,9 +364,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-surface-0 select-none">
-      {/* Title bar with window controls */}
-      <TitleBar />
-
+      <Toaster position="top-right" />
       <div className="flex flex-1 overflow-hidden">
         {/* Flip Rail — always visible */}
         <Sidebar />
@@ -384,7 +381,7 @@ export default function App() {
           <CredentialPrompt />
 
           {/* Web content / New tab page */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden relative">
             <div className="flex flex-col flex-1 min-w-0 relative">
               {isDevTools ? (
                 <DevDashboard />
@@ -416,11 +413,10 @@ export default function App() {
               </>
             )}
 
-            {/* Extension side panel */}
-            {showExtensionPanel && (
-              <ExtensionPanel />
-            )}
           </div>
+
+          {/* Extension dock — macOS-style bottom bar */}
+          <ExtensionDock />
         </div>
       </div>
 
@@ -616,24 +612,24 @@ function ReleaseNotes({ notes }) {
   const [expanded, setExpanded] = useState(false);
   if (!notes || !notes.length) return null;
   const items = Array.isArray(notes) ? notes : [notes];
-  const visible = expanded ? items : items.slice(0, 2);
+  const visible = expanded ? items : items.slice(0, 3);
 
   return (
-    <div className="mb-3">
-      <ul className="space-y-0.5">
+    <div className="mb-3 px-0.5">
+      <ul className="space-y-1.5">
         {visible.map((note, i) => (
-          <li key={i} className="flex items-start gap-1.5 text-[10px] text-white/40 leading-tight">
-            <span className="text-flip-400 mt-px shrink-0">•</span>
+          <li key={i} className="flex items-start gap-2 text-[10px] text-white/50 leading-relaxed">
+            <span className="mt-1.5 w-1 h-1 rounded-full bg-flip-500/50 shrink-0" />
             <span>{note}</span>
           </li>
         ))}
       </ul>
-      {items.length > 2 && (
+      {items.length > 3 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-[9px] text-flip-400/60 hover:text-flip-400 mt-1 transition-colors"
+          className="text-[9px] text-flip-400/50 hover:text-flip-400 mt-1.5 ml-3 transition-colors"
         >
-          {expanded ? 'Show less' : `+${items.length - 2} more`}
+          {expanded ? 'Show less' : `+${items.length - 3} more`}
         </button>
       )}
     </div>
@@ -660,73 +656,100 @@ function UpdateBanner() {
   if (update.status !== 'available' && update.status !== 'downloading' && update.status !== 'ready') return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] max-w-sm animate-fade-in">
-      <div className="bg-surface-3 border border-white/10 rounded-xl shadow-2xl shadow-black/40 p-4">
-        {update.status === 'available' && (
-          <>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-flip-500 animate-pulse" />
-              <span className="text-xs font-semibold text-white/90">Update Available</span>
-              <span className="text-[9px] text-white/30 font-mono ml-auto">v{update.version}</span>
-            </div>
-            <ReleaseNotes notes={update.releaseNotes} />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDismissed(true)}
-                className="flex-1 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] text-white/40 hover:text-white/60 transition-colors"
-              >
-                Later
-              </button>
-              <button
-                onClick={() => window.flipAPI?.downloadUpdate?.()}
-                className="flex-1 px-3 py-1.5 rounded-lg bg-flip-500/20 border border-flip-500/25 text-[10px] text-flip-400 font-medium hover:bg-flip-500/30 transition-colors"
-              >
-                Download
-              </button>
-            </div>
-          </>
-        )}
+    <div className="fixed bottom-4 right-4 z-[9999] max-w-[340px] animate-fade-in">
+      <div className="relative vibrancy border border-white/[0.08] rounded-[18px] shadow-mac-xl overflow-hidden">
+        {/* Tron accent line at top */}
+        <div className="h-[2px] bg-gradient-to-r from-transparent via-flip-500 to-transparent" />
 
-        {update.status === 'downloading' && (
-          <>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 border-2 border-flip-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs font-semibold text-white/90">Downloading Update...</span>
-            </div>
-            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-1">
-              <div
-                className="h-full bg-gradient-to-r from-flip-500 to-accent-400 rounded-full transition-all duration-300"
-                style={{ width: `${Math.round(update.percent || 0)}%` }}
-              />
-            </div>
-            <p className="text-[9px] text-white/25 text-right">{Math.round(update.percent || 0)}%</p>
-          </>
-        )}
+        <div className="p-4">
+          {update.status === 'available' && (
+            <>
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-flip-500/20 to-accent-400/10 border border-flip-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-flip-500 animate-pulse" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-white/90">Update Available</p>
+                  <p className="text-[9px] text-white/30 font-mono">v{update.version}</p>
+                </div>
+                <button onClick={() => setDismissed(true)} className="w-6 h-6 rounded-[8px] flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/[0.06] transition-colors shrink-0">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <ReleaseNotes notes={update.releaseNotes} />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDismissed(true)}
+                  className="flex-1 px-3 py-2 rounded-[10px] border border-white/[0.06] text-[10px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-colors"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={() => window.flipAPI?.downloadUpdate?.()}
+                  className="flex-1 px-3 py-2 rounded-[10px] bg-flip-500/15 border border-flip-500/20 text-[10px] text-flip-400 font-medium hover:bg-flip-500/25 transition-colors"
+                >
+                  Download
+                </button>
+              </div>
+            </>
+          )}
 
-        {update.status === 'ready' && (
-          <>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-accent-400" />
-              <span className="text-xs font-semibold text-white/90">Update Ready</span>
-              <span className="text-[9px] text-white/30 font-mono ml-auto">v{update.version}</span>
-            </div>
-            <ReleaseNotes notes={update.releaseNotes} />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDismissed(true)}
-                className="flex-1 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] text-white/40 hover:text-white/60 transition-colors"
-              >
-                Later
-              </button>
-              <button
-                onClick={() => window.flipAPI?.installUpdate?.()}
-                className="flex-1 px-3 py-1.5 rounded-lg bg-accent-400/20 border border-accent-400/25 text-[10px] text-accent-400 font-medium hover:bg-accent-400/30 transition-colors"
-              >
-                Restart Now
-              </button>
-            </div>
-          </>
-        )}
+          {update.status === 'downloading' && (
+            <>
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-flip-500/20 to-accent-400/10 border border-flip-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-3.5 h-3.5 border-2 border-flip-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-white/90">Downloading...</p>
+                  <p className="text-[9px] text-white/30 font-mono">{Math.round(update.percent || 0)}% complete</p>
+                </div>
+              </div>
+              <div className="w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.round(update.percent || 0)}%`,
+                    background: 'linear-gradient(90deg, #ff6234, #f97316, #fbbf24)',
+                    boxShadow: '0 0 8px rgba(249,115,22,0.4)',
+                  }}
+                />
+              </div>
+            </>
+          )}
+
+          {update.status === 'ready' && (
+            <>
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-accent-400/20 to-flip-500/10 border border-accent-400/20 flex items-center justify-center shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent-400"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-white/90">Ready to Install</p>
+                  <p className="text-[9px] text-white/30 font-mono">v{update.version}</p>
+                </div>
+                <button onClick={() => setDismissed(true)} className="w-6 h-6 rounded-[8px] flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/[0.06] transition-colors shrink-0">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <ReleaseNotes notes={update.releaseNotes} />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDismissed(true)}
+                  className="flex-1 px-3 py-2 rounded-[10px] border border-white/[0.06] text-[10px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-colors"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={() => window.flipAPI?.installUpdate?.()}
+                  className="flex-1 px-3 py-2 rounded-[10px] bg-accent-400/15 border border-accent-400/20 text-[10px] text-accent-400 font-medium hover:bg-accent-400/25 transition-colors"
+                >
+                  Restart & Update
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

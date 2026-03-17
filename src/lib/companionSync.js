@@ -381,12 +381,8 @@ function startAIRelay() {
         aiRelayPending = { msgRef, docId: change.doc.id, uid };
         aiRelayBuffer = '';
 
-        // Open sidebar to AI chat extension so the message is visible
+        // Open AI chat extension so the message is visible
         try {
-          const store = useBrowserStore.getState();
-          if (store.setSidebarView) store.setSidebarView('extensions');
-          if (!store.sidebarOpen && store.toggleSidebar) store.toggleSidebar();
-          // Switch to AI chat extension specifically
           window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: 'ai-chat' } }));
         } catch {}
 

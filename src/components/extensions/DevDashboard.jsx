@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
+import { sileo } from 'sileo';
 
 const TEMPLATES = {
   blank: {
@@ -760,6 +761,7 @@ function CodeBlock({ children, lang }) {
   function handleCopy() {
     navigator.clipboard.writeText(children);
     setCopied(true);
+    sileo.success("Code copied!");
     setTimeout(() => setCopied(false), 1500);
   }
   return (

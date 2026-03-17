@@ -24,25 +24,25 @@ function SettingsView() {
   function Toggle({ active, onToggle, color = 'bg-flip-500' }) {
     return (
       <div
-        className={clsx('w-8 h-4 rounded-full transition-colors duration-200 relative cursor-pointer', active ? color : 'bg-white/10')}
+        className={clsx('macos-toggle', active && 'active')}
         onClick={onToggle}
       >
-        <div className={clsx('absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200', active ? 'translate-x-4' : 'translate-x-0.5')} />
+        <div className="macos-toggle-knob" />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+    <div className="flex-1 overflow-y-auto px-3.5 py-3.5 space-y-3">
       {/* Security & Privacy card */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 space-y-2.5 animate-fade-in-up">
+      <div className="rounded-[14px] bg-white/[0.03] border border-white/[0.06] p-3.5 space-y-3 animate-fade-in-up">
         <div className="flex items-center gap-2 mb-1">
-          <Shield size={12} className="text-accent-400/70" />
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">{t('securityPrivacy', lang)}</span>
+          <Shield size={13} className="text-accent-400/60" />
+          <span className="text-[10px] font-medium text-white/35 uppercase tracking-widest">{t('securityPrivacy', lang)}</span>
         </div>
         {securityToggles.map((toggle) => (
-          <label key={toggle.key} className="flex items-center justify-between cursor-pointer">
-            <span className="text-xs text-white/70">{t(toggle.labelKey, lang)}</span>
+          <label key={toggle.key} className="flex items-center justify-between cursor-pointer py-0.5">
+            <span className="text-[13px] text-white/65">{t(toggle.labelKey, lang)}</span>
             <Toggle
               active={settings[toggle.key]}
               color="bg-accent-400"
@@ -54,16 +54,16 @@ function SettingsView() {
             />
           </label>
         ))}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-white/70">{t('dnsOverHttps', lang)}</span>
-          <span className="text-[10px] text-accent-400/70 font-medium">{t('alwaysOnCloudflare', lang)}</span>
+        <div className="flex items-center justify-between py-0.5">
+          <span className="text-[13px] text-white/65">{t('dnsOverHttps', lang)}</span>
+          <span className="text-[11px] text-accent-400/60 font-medium">{t('alwaysOnCloudflare', lang)}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-white/70">{t('permissionRequests', lang)}</span>
-          <span className="text-[10px] text-accent-400/70 font-medium">{t('denyByDefault', lang)}</span>
+        <div className="flex items-center justify-between py-0.5">
+          <span className="text-[13px] text-white/65">{t('permissionRequests', lang)}</span>
+          <span className="text-[11px] text-accent-400/60 font-medium">{t('denyByDefault', lang)}</span>
         </div>
         <button
-          className="w-full text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors text-left mt-1"
+          className="w-full text-[13px] px-3.5 py-2.5 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.07] text-white/50 hover:text-white/70 transition-colors text-left mt-1"
           onClick={async () => {
             if (window.flipAPI?.clearBrowsingData) {
               await window.flipAPI.clearBrowsingData({ cache: true, storage: true });
@@ -76,14 +76,14 @@ function SettingsView() {
       </div>
 
       {/* General card */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 space-y-2.5 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+      <div className="rounded-[14px] bg-white/[0.03] border border-white/[0.06] p-3.5 space-y-3 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
         <div className="flex items-center gap-2 mb-1">
-          <Settings size={12} className="text-flip-400/70" />
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">{t('general', lang)}</span>
+          <Settings size={13} className="text-flip-400/60" />
+          <span className="text-[10px] font-medium text-white/35 uppercase tracking-widest">{t('general', lang)}</span>
         </div>
         {toggles.map((toggle) => (
-          <label key={toggle.key} className="flex items-center justify-between cursor-pointer">
-            <span className="text-xs text-white/70">{t(toggle.labelKey, lang)}</span>
+          <label key={toggle.key} className="flex items-center justify-between cursor-pointer py-0.5">
+            <span className="text-[13px] text-white/65">{t(toggle.labelKey, lang)}</span>
             <Toggle active={settings[toggle.key]} onToggle={() => updateSettings({ [toggle.key]: !settings[toggle.key] })} />
           </label>
         ))}
@@ -105,10 +105,10 @@ function SettingsView() {
       </div>
 
       {/* Theme card */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 animate-fade-in-up" style={{ animationDelay: '75ms' }}>
-        <div className="flex items-center gap-2 mb-2">
-          <Palette size={12} className="text-flip-400/70" />
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">{t('theme', lang) || 'Theme'}</span>
+      <div className="rounded-[14px] bg-white/[0.03] border border-white/[0.06] p-3.5 animate-fade-in-up" style={{ animationDelay: '75ms' }}>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Palette size={13} className="text-flip-400/60" />
+          <span className="text-[10px] font-medium text-white/35 uppercase tracking-widest">{t('theme', lang) || 'Theme'}</span>
         </div>
         <div className="grid grid-cols-3 gap-1.5">
           {[
@@ -132,8 +132,8 @@ function SettingsView() {
                   }
                 }}
                 className={clsx(
-                  'flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all duration-150',
-                  isActive ? 'border-flip-500 bg-white/[0.04]' : 'border-white/[0.06] hover:border-white/[0.12] opacity-70 hover:opacity-100'
+                  'flex flex-col items-center gap-1.5 p-2.5 rounded-[10px] border-2 transition-all duration-200',
+                  isActive ? 'border-flip-500/60 bg-white/[0.04]' : 'border-white/[0.06] hover:border-white/[0.12] opacity-70 hover:opacity-100'
                 )}
               >
                 <div className="flex gap-0.5">
@@ -141,7 +141,7 @@ function SettingsView() {
                     <div key={i} className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: c }} />
                   ))}
                 </div>
-                <span className="text-[8px] text-white/50 font-medium">{theme.label}</span>
+                <span className="text-[9px] text-white/50 font-medium">{theme.label}</span>
               </button>
             );
           })}
@@ -149,28 +149,30 @@ function SettingsView() {
       </div>
 
       {/* Wallpaper card */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <div className="flex items-center gap-2 mb-2">
-          <PictureInPicture2 size={12} className="text-flip-400/70" />
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">{t('wallpaper', lang)}</span>
+      <div className="rounded-[14px] bg-white/[0.03] border border-white/[0.06] p-3.5 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <div className="flex items-center gap-2 mb-2.5">
+          <PictureInPicture2 size={13} className="text-flip-400/60" />
+          <span className="text-[10px] font-medium text-white/35 uppercase tracking-widest">{t('wallpaper', lang)}</span>
         </div>
         <div className="grid grid-cols-3 gap-1.5">
           <button
             onClick={() => updateSettings({ wallpaper: null })}
             className={clsx(
-              'h-12 rounded-lg border-2 transition-all text-[9px] font-medium',
-              !settings.wallpaper ? 'border-flip-500 bg-surface-0' : 'border-white/10 bg-surface-0 opacity-60 hover:opacity-100'
+              'h-12 rounded-[10px] border-2 transition-all text-[9px] font-medium',
+              !settings.wallpaper ? 'border-flip-500/60 bg-surface-0' : 'border-white/[0.08] bg-surface-0 opacity-60 hover:opacity-100'
             )}
           >
             {t('noWallpaper', lang)}
           </button>
           {[
-            { label: 'Puerto Rico', url: 'https://images.unsplash.com/photo-1580757468214-c73f7062a5cb?w=1920&q=80&fit=crop' },
+            { label: 'Puerto Rico', url: 'https://images.unsplash.com/photo-1579687197117-5d4d12b468cb?w=1920&q=80&fit=crop' },
             { label: 'Boston', url: 'https://images.unsplash.com/photo-1501979376754-2ff867a4f659?w=1920&q=80&fit=crop' },
-            { label: 'Pennsylvania', url: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=1920&q=80&fit=crop' },
-            { label: 'Florida', url: 'https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=1920&q=80&fit=crop' },
+            { label: 'Pennsylvania', url: 'https://images.unsplash.com/photo-1603403452056-8606c747a06a?w=1920&q=80&fit=crop' },
+            { label: 'Florida', url: 'https://images.unsplash.com/photo-1476984251899-8d7fdfc5c92c?w=1920&q=80&fit=crop' },
             { label: 'NYC', url: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=1920&q=80&fit=crop' },
-            { label: 'Tech', url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1920&q=80&fit=crop' },
+            { label: 'Tech', url: 'https://images.unsplash.com/photo-1584949091598-c31daaaa4aa9?w=1920&q=80&fit=crop' },
+            { label: 'Flip Modern', url: 'https://peru-grasshopper-236853.hostingersite.com/modern.png' },
+            { label: 'Flip Simple', url: 'https://peru-grasshopper-236853.hostingersite.com/simple.png' },
             { label: 'Space', url: 'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=1920&q=80&fit=crop' },
             { label: 'Nature', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80&fit=crop' },
           ].map((wp) => (
@@ -178,8 +180,8 @@ function SettingsView() {
               key={wp.label}
               onClick={() => updateSettings({ wallpaper: wp.url })}
               className={clsx(
-                'h-12 rounded-lg border-2 bg-cover bg-center transition-all text-[9px] font-medium text-white drop-shadow-sm',
-                settings.wallpaper === wp.url ? 'border-flip-500' : 'border-white/10 opacity-60 hover:opacity-100'
+                'h-12 rounded-[10px] border-2 bg-cover bg-center transition-all text-[9px] font-medium text-white drop-shadow-sm',
+                settings.wallpaper === wp.url ? 'border-flip-500/60' : 'border-white/[0.08] opacity-60 hover:opacity-100'
               )}
               style={{ backgroundImage: `url(${wp.url})` }}
             >
@@ -200,23 +202,23 @@ function SettingsView() {
       </div>
 
       {/* About & Updates card */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 animate-fade-in-up" style={{ animationDelay: '125ms' }}>
+      <div className="rounded-[14px] bg-white/[0.03] border border-white/[0.06] p-3.5 animate-fade-in-up" style={{ animationDelay: '125ms' }}>
         <div className="flex items-center gap-2 mb-2">
-          <Activity size={12} className="text-flip-400/70" />
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">About & Updates</span>
+          <Activity size={13} className="text-flip-400/60" />
+          <span className="text-[10px] font-medium text-white/35 uppercase tracking-widest">About & Updates</span>
         </div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-white/70">Version</span>
+          <span className="text-[13px] text-white/65">Version</span>
           <span className="text-[10px] text-white/30 font-mono">v{__APP_VERSION__}</span>
         </div>
         <UpdateChecker />
       </div>
 
       {/* Import / Export card */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+      <div className="rounded-[14px] bg-white/[0.03] border border-white/[0.06] p-3.5 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
         <div className="flex items-center gap-2 mb-2">
-          <FileUp size={12} className="text-flip-400/70" />
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">Import / Export</span>
+          <FileUp size={13} className="text-flip-400/60" />
+          <span className="text-[10px] font-medium text-white/35 uppercase tracking-widest">Import / Export</span>
         </div>
         <div className="space-y-1.5">
           <div className="flex gap-1.5">

@@ -9,6 +9,7 @@ import {
   EyeOff, ShieldAlert, Film, Share2, Shield, Crown, DollarSign, Podcast, Waves,
 } from 'lucide-react';
 import useBrowserStore from '../store/browserStore';
+import { sileo } from 'sileo';
 
 const ICON_MAP = {
   bot: Bot,
@@ -193,14 +194,17 @@ export default function Marketplace() {
       const result = await window.flipAPI?.marketplaceInstall?.(extId);
       if (result?.error) {
         setError(result.error);
+        sileo.error(`Install failed: ${result.error}`);
       } else {
         setInstalled((prev) => [...prev, extId]);
+        sileo.success("Extension installed!");
         // Reload extensions in the sidebar (refresh)
         const exts = await window.flipAPI?.loadExtensions?.();
         if (exts) setExtensions(exts);
       }
     } catch (e) {
       setError(e.message);
+      sileo.error(`Install failed: ${e.message}`);
     }
     setInstalling(null);
   }
@@ -211,13 +215,16 @@ export default function Marketplace() {
       const result = await window.flipAPI?.marketplaceUninstall?.(extId);
       if (result?.error) {
         setError(result.error);
+        sileo.error(`Uninstall failed: ${result.error}`);
       } else {
         setInstalled((prev) => prev.filter((id) => id !== extId));
+        sileo.info("Extension removed");
         const exts = await window.flipAPI?.loadExtensions?.();
         if (exts) setExtensions(exts);
       }
     } catch (e) {
       setError(e.message);
+      sileo.error(`Uninstall failed: ${e.message}`);
     }
     setInstalling(null);
   }
@@ -253,7 +260,7 @@ export default function Marketplace() {
       <div className="max-w-[960px] mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-flip-500 to-orange-500 flex items-center justify-center shadow-lg shadow-flip-500/20">
+          <div className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-flip-500 to-orange-500 flex items-center justify-center shadow-mac shadow-flip-500/20">
             <Store size={20} className="text-white" />
           </div>
           <div>
@@ -267,9 +274,9 @@ export default function Marketplace() {
         {/* Email prompt modal */}
         {showEmailPrompt && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => { setShowEmailPrompt(false); setPendingPurchase(null); }}>
-            <form onSubmit={handleEmailSubmit} onClick={e => e.stopPropagation()} className="bg-[#141419] border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <form onSubmit={handleEmailSubmit} onClick={e => e.stopPropagation()} className="vibrancy border border-white/[0.08] rounded-[18px] p-6 w-full max-w-sm shadow-mac-xl">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-[12px] bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
                   <Crown size={18} className="text-amber-400" />
                 </div>
                 <div>
@@ -289,14 +296,14 @@ export default function Marketplace() {
                 placeholder="your@email.com"
                 autoFocus
                 required
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-amber-500/40 transition-colors mb-3"
+                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-[12px] px-4 py-2.5 text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-amber-500/40 transition-colors mb-3"
               />
               <p className="text-[9px] text-white/20 mb-4">Your email is used to manage your subscription. We'll never spam you.</p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => { setShowEmailPrompt(false); setPendingPurchase(null); }} className="flex-1 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-white/40 hover:bg-white/[0.08] transition-colors">
+                <button type="button" onClick={() => { setShowEmailPrompt(false); setPendingPurchase(null); }} className="flex-1 px-4 py-2 rounded-[10px] bg-white/[0.04] border border-white/[0.06] text-xs text-white/40 hover:bg-white/[0.08] transition-colors">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-xs text-amber-400 font-semibold hover:from-amber-500/30 hover:to-orange-500/30 transition-colors">
+                <button type="submit" className="flex-1 px-4 py-2 rounded-[10px] bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-xs text-amber-400 font-semibold hover:from-amber-500/30 hover:to-orange-500/30 transition-colors">
                   Continue
                 </button>
               </div>
@@ -306,7 +313,7 @@ export default function Marketplace() {
 
         {/* Error banner */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 mb-4 text-xs text-red-400 flex items-center justify-between">
+          <div className="bg-red-500/10 border border-red-500/15 rounded-[14px] px-4 py-3 mb-4 text-xs text-red-400 flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError('')} className="text-red-400/50 hover:text-red-400">✕</button>
           </div>
@@ -327,14 +334,14 @@ export default function Marketplace() {
                 return (
                   <div
                     key={ext.id}
-                    className="group relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-xl p-4 hover:border-flip-500/30 hover:shadow-lg hover:shadow-flip-500/5 transition-all duration-200"
+                    className="group relative bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-[16px] p-4 hover:border-flip-500/30 hover:shadow-mac hover:shadow-flip-500/5 transition-all duration-200"
                   >
                     <div className="flex items-start gap-3 mb-2">
-                      <div className="w-9 h-9 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-[12px] bg-white/[0.06] flex items-center justify-center shrink-0">
                         <IconComp size={18} className="text-flip-400" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[12px] font-semibold text-white/90 truncate">{ext.name}</p>
+                        <p className="text-[13px] font-semibold text-white/90 truncate">{ext.name}</p>
                         <p className="text-[9px] text-white/30">{ext.author}</p>
                       </div>
                     </div>
@@ -358,7 +365,7 @@ export default function Marketplace() {
                         <button
                           onClick={() => handlePurchase(ext)}
                           disabled={purchasing === ext.id}
-                          className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/25 text-[10px] text-amber-400 font-medium hover:from-amber-500/25 hover:to-orange-500/25 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-[10px] bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/25 text-[10px] text-amber-400 font-medium hover:from-amber-500/25 hover:to-orange-500/25 transition-colors disabled:opacity-50 flex items-center gap-1"
                         >
                           {purchasing === ext.id ? <Loader2 size={10} className="animate-spin" /> : <><Crown size={10} /> ${ext.pricing.price}/{ext.pricing.type === 'monthly' ? 'mo' : ext.pricing.type === 'yearly' ? 'yr' : ''}</>}
                         </button>
@@ -366,7 +373,7 @@ export default function Marketplace() {
                         <button
                           onClick={() => handleInstall(ext.id)}
                           disabled={installing === ext.id}
-                          className="px-2.5 py-1 rounded-lg bg-flip-500/15 border border-flip-500/25 text-[10px] text-flip-400 font-medium hover:bg-flip-500/25 transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1 rounded-[10px] bg-flip-500/15 border border-flip-500/25 text-[10px] text-flip-400 font-medium hover:bg-flip-500/25 transition-colors disabled:opacity-50"
                         >
                           {installing === ext.id ? <Loader2 size={10} className="animate-spin" /> : 'Install'}
                         </button>
@@ -388,13 +395,13 @@ export default function Marketplace() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search extensions..."
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl pl-9 pr-4 py-2.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-flip-500/40 transition-colors"
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-[14px] pl-9 pr-4 py-2.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-flip-500/40 focus:shadow-mac transition-colors"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5 text-xs text-white/60 outline-none cursor-pointer"
+            className="bg-white/[0.04] border border-white/[0.06] rounded-[14px] px-3 py-2.5 text-xs text-white/60 outline-none cursor-pointer"
           >
             <option value="featured">Featured</option>
             <option value="downloads">Most Popular</option>
@@ -412,7 +419,7 @@ export default function Marketplace() {
               <button
                 key={cat.id}
                 onClick={() => setCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-medium whitespace-nowrap transition-all ${
                   active
                     ? 'bg-flip-500/15 border border-flip-500/30 text-flip-400'
                     : 'bg-white/[0.02] border border-white/[0.04] text-white/30 hover:text-white/50 hover:bg-white/[0.04]'
@@ -452,10 +459,10 @@ export default function Marketplace() {
                 return (
                   <div
                     key={ext.id}
-                    className="group bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 hover:border-white/[0.1] hover:bg-white/[0.03] transition-all duration-200"
+                    className="group bg-white/[0.02] border border-white/[0.06] rounded-[16px] p-4 hover:border-white/[0.1] hover:bg-white/[0.03] transition-all duration-200"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">
+                      <div className="w-11 h-11 rounded-[14px] bg-white/[0.05] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">
                         <IconComp size={20} className="text-white/40 group-hover:text-white/60 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -483,7 +490,7 @@ export default function Marketplace() {
                             ) : (
                               <span className="text-flip-400/60">New</span>
                             )}
-                            <span className="capitalize px-1.5 py-0.5 rounded bg-white/[0.04] text-[9px]">
+                            <span className="capitalize px-1.5 py-0.5 rounded-[6px] bg-white/[0.04] text-[9px]">
                               {ext.category}
                             </span>
                           </div>
@@ -499,7 +506,7 @@ export default function Marketplace() {
                               <button
                                 onClick={() => handleUninstall(ext.id)}
                                 disabled={isWorking}
-                                className="p-1.5 rounded-lg text-white/15 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                className="p-1.5 rounded-[10px] text-white/15 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                                 title="Uninstall"
                               >
                                 {isWorking ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
@@ -509,7 +516,7 @@ export default function Marketplace() {
                             <button
                               onClick={() => handlePurchase(ext)}
                               disabled={purchasing === ext.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/25 text-[10px] text-amber-400 font-semibold hover:from-amber-500/25 hover:to-orange-500/25 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/25 text-[10px] text-amber-400 font-semibold hover:from-amber-500/25 hover:to-orange-500/25 transition-colors disabled:opacity-50"
                             >
                               {purchasing === ext.id ? (
                                 <Loader2 size={11} className="animate-spin" />
@@ -523,7 +530,7 @@ export default function Marketplace() {
                             <button
                               onClick={() => handleInstall(ext.id)}
                               disabled={isWorking}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-flip-500/15 border border-flip-500/25 text-[10px] text-flip-400 font-semibold hover:bg-flip-500/25 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-flip-500/15 border border-flip-500/25 text-[10px] text-flip-400 font-semibold hover:bg-flip-500/25 transition-colors disabled:opacity-50"
                             >
                               {isWorking ? (
                                 <Loader2 size={11} className="animate-spin" />

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Smartphone, QrCode, Unlink } from 'lucide-react';
-import { isPaired, startSync, unpair, createPairingSession, listenForPairingClaim, cancelPairing } from '../../lib/companionSync';
+import React, { useState, useEffect } from 'react';
+import { Smartphone, QrCode, X, Loader2, CheckCircle2 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { sileo } from 'sileo';
+import { isPaired, startSync, unpair, createPairingSession, listenForPairingClaim, cancelPairing } from '../../lib/companionSync';
 
 function CompanionAppCard() {
   const [paired, setPaired] = useState(isPaired());
@@ -104,7 +105,7 @@ function CompanionAppCard() {
             <div className="w-full">
               <p className="text-[8px] text-white/20 text-center mb-1">Or enter this PIN manually:</p>
               <button
-                onClick={() => { navigator.clipboard.writeText(pairingCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}
+                onClick={() => { navigator.clipboard.writeText(pairingCode); setCodeCopied(true); sileo.success("PIN copied!"); setTimeout(() => setCodeCopied(false), 2000); }}
                 className="w-full px-2 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[13px] font-mono text-white/70 hover:text-white tracking-[0.25em] text-center transition-colors font-bold uppercase"
                 title="Click to copy"
               >

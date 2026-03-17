@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Shield, Copy, KeyRound } from 'lucide-react';
+import { sileo } from 'sileo';
 
 function PasswordsView() {
   const [passwords, setPasswords] = useState([]);
@@ -77,7 +78,7 @@ function PasswordsView() {
                   <div className="text-[10px] text-white/50 truncate">{e.issuer || 'Unknown'}</div>
                   <div className="text-xs font-mono text-blue-400 font-bold tracking-wider">{totpCodes[e.id] || '------'}</div>
                 </div>
-                <button onClick={() => navigator.clipboard.writeText(totpCodes[e.id] || '')} className="text-[9px] text-white/30 hover:text-white/60 ml-2 flex-shrink-0">
+                <button onClick={() => { navigator.clipboard.writeText(totpCodes[e.id] || ''); sileo.success("Code copied!"); }} className="text-[9px] text-white/30 hover:text-white/60 ml-2 flex-shrink-0">
                   Copy
                 </button>
               </div>
@@ -141,7 +142,7 @@ function PasswordsView() {
                   {revealId === pw.id ? 'Hide' : 'Show'}
                 </button>
                 <button
-                  onClick={() => navigator.clipboard.writeText(pw.password)}
+                  onClick={() => { navigator.clipboard.writeText(pw.password); sileo.success("Password copied!"); }}
                   className="text-[9px] text-white/30 hover:text-white/60"
                 >
                   Copy

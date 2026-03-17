@@ -30,7 +30,7 @@ import SettingsView from './sidebar/SettingsView';
 import CtxItem from './sidebar/CtxItem';
 
 // The rail is always visible (48px). Panels float over content.
-const RAIL_WIDTH = 48;
+const RAIL_WIDTH = 54;
 
 // Primary items: always visible in the rail
 const PRIMARY_NAV = [
@@ -40,7 +40,6 @@ const PRIMARY_NAV = [
   { id: 'downloads', icon: Download, labelKey: 'downloads' },
   { id: 'passwords', icon: KeyRound, labelKey: 'passwords' },
   { id: 'wallet', icon: Wallet, labelKey: 'wallet' },
-  { id: 'extensions', icon: Puzzle, labelKey: 'extensions' },
   { id: 'settings', icon: Settings, labelKey: 'settings' },
 ];
 
@@ -87,14 +86,6 @@ export default function Sidebar() {
   }
 
   function openPanel(viewId) {
-    // Extensions open in the right-side ExtensionPanel, not the floating panel
-    if (viewId === 'extensions') {
-      setPanelOpen(false);
-      setActivePanel(null);
-      const current = useBrowserStore.getState().sidebarView;
-      setSidebarView(current === 'extensions' ? 'tabs' : 'extensions');
-      return;
-    }
     if (activePanel === viewId && panelOpen) {
       setPanelOpen(false);
       setActivePanel(null);
@@ -157,27 +148,27 @@ export default function Sidebar() {
       {/* ── Icon Rail ── */}
       <div
         id="flip-rail"
-        className="flex flex-col items-center h-full bg-surface-1 border-r border-white/5"
+        className="flex flex-col items-center h-full bg-surface-1/80 backdrop-blur-2xl border-r border-white/[0.06]"
         style={{ width: RAIL_WIDTH, minWidth: RAIL_WIDTH }}
       >
         {/* Tab favicon strip — scrollable, no scrollbar */}
-        <div className="flex flex-col items-center gap-1 py-2 w-full border-b border-white/5 overflow-y-auto scrollbar-none" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+        <div className="flex flex-col items-center gap-1.5 py-2.5 w-full border-b border-white/[0.06] overflow-y-auto scrollbar-none" style={{ maxHeight: 'calc(100vh - 360px)' }}>
           {recentTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               onContextMenu={(e) => handleTabContext(e, tab)}
               className={clsx(
-                'relative w-8 h-8 rounded-xl flex items-center justify-center group',
+                'relative w-9 h-9 rounded-[12px] flex items-center justify-center group',
                 'transition-all duration-200',
                 tab.id === activeTabId
-                  ? 'bg-flip-500/10 ring-1 ring-flip-500/20'
-                  : 'bg-white/[0.03] hover:bg-white/[0.07] hover:scale-105'
+                  ? 'bg-flip-500/10 ring-1 ring-flip-500/15'
+                  : 'bg-white/[0.03] hover:bg-white/[0.06] hover:scale-105'
               )}
               title={tab.title || 'New Tab'}
             >
               {tab.favicon ? (
-                <img src={tab.favicon} className={clsx('w-4 h-4 rounded transition-transform duration-200', tab.id === activeTabId && 'scale-110')} alt="" />
+                <img src={tab.favicon} className={clsx('w-[18px] h-[18px] rounded-[4px] transition-transform duration-200', tab.id === activeTabId && 'scale-110')} alt="" />
               ) : (
                 <Globe size={14} className={tab.id === activeTabId ? 'text-flip-400' : 'text-white/30'} />
               )}
@@ -189,7 +180,7 @@ export default function Sidebar() {
           {/* New tab */}
           <button
             onClick={() => addTab()}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white/20 hover:text-white/50 hover:bg-white/5 transition-all"
+            className="w-9 h-9 rounded-[12px] flex items-center justify-center text-white/20 hover:text-white/40 hover:bg-white/[0.04] transition-all"
             title="New Tab"
           >
             <Plus size={14} />
@@ -197,22 +188,22 @@ export default function Sidebar() {
         </div>
 
         {/* Primary nav icons */}
-        <div className="flex flex-col items-center gap-1 py-3 flex-1">
+        <div className="flex flex-col items-center gap-1.5 py-3 flex-1">
           {PRIMARY_NAV.map((item) => (
             <button
               key={item.id}
               onClick={() => openPanel(item.id)}
               className={clsx(
-                'relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200',
-                (activePanel === item.id && panelOpen) || (item.id === 'extensions' && sidebarView === 'extensions')
-                  ? 'bg-flip-500/15 text-flip-400'
-                  : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                'relative w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200',
+                (activePanel === item.id && panelOpen)
+                  ? 'bg-flip-500/10 text-flip-400'
+                  : 'text-white/30 hover:text-white/55 hover:bg-white/[0.05]'
               )}
               title={t(item.labelKey, lang)}
             >
-              <item.icon size={16} />
+              <item.icon size={17} />
               {activePanel === item.id && panelOpen && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-flip-500" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-flip-500" />
               )}
             </button>
           ))}
@@ -221,22 +212,22 @@ export default function Sidebar() {
           <button
             onClick={() => setMoreOpen(!moreOpen)}
             className={clsx(
-              'relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200',
+              'relative w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200',
               moreOpen || MORE_NAV.some(n => n.id === activePanel && panelOpen)
-                ? 'bg-flip-500/15 text-flip-400'
-                : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                ? 'bg-flip-500/10 text-flip-400'
+                : 'text-white/30 hover:text-white/55 hover:bg-white/[0.05]'
             )}
             title="More tools"
           >
-            <MoreHorizontal size={16} />
+            <MoreHorizontal size={17} />
           </button>
         </div>
 
         {/* Bottom: privacy + version */}
-        <div className="flex flex-col items-center gap-1 pb-2 border-t border-white/5 pt-2 w-full">
+        <div className="flex flex-col items-center gap-1.5 pb-3 border-t border-white/[0.06] pt-2.5 w-full">
           <div className="flex flex-col items-center" title={`${blockedCount} trackers blocked`}>
-            <Shield size={13} className="text-accent-400/40" />
-            <span className="text-[8px] text-white/20 mt-0.5">{blockedCount}</span>
+            <Shield size={14} className="text-accent-400/35" />
+            <span className="text-[9px] text-white/20 mt-0.5">{blockedCount}</span>
           </div>
           {tabs.length > 6 && (
             <button
@@ -247,7 +238,7 @@ export default function Sidebar() {
               +{tabs.length - 6}
             </button>
           )}
-          <span className="text-[7px] text-white/15 mt-0.5 select-text" title="Flip Browser version">v{__APP_VERSION__}</span>
+          <span className="text-[8px] text-white/15 mt-0.5 select-text" title="Flip Browser version">v{__APP_VERSION__}</span>
         </div>
       </div>
 
@@ -255,33 +246,33 @@ export default function Sidebar() {
       {moreOpen && (
         <div
           ref={moreRef}
-          className="absolute bottom-12 bg-surface-2/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 p-3 animate-scale-in"
-          style={{ left: RAIL_WIDTH + 8, width: 220, zIndex: 50, transformOrigin: 'bottom left' }}
+          className="absolute bottom-12 vibrancy border border-white/[0.08] rounded-[16px] shadow-mac-lg p-3 animate-scale-in"
+          style={{ left: RAIL_WIDTH + 8, width: 230, zIndex: 50, transformOrigin: 'bottom left' }}
         >
-          <div className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-2 px-1">More Tools</div>
+          <div className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-2.5 px-1">More Tools</div>
           <div className="grid grid-cols-3 gap-1.5">
             {MORE_NAV.map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => openMoreItem(item.id)}
                 className={clsx(
-                  'group flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-xl transition-all duration-150 animate-fade-in-up',
+                  'group flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-[12px] transition-all duration-200 animate-fade-in-up',
                   activePanel === item.id && panelOpen
-                    ? 'bg-flip-500/15 text-flip-400 ring-1 ring-flip-500/20'
-                    : 'text-white/40 hover:text-white/80 hover:bg-white/[0.06] hover:shadow-sm'
+                    ? 'bg-flip-500/10 text-flip-400 ring-1 ring-flip-500/15'
+                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]'
                 )}
                 style={{ animationDelay: `${i * 25}ms` }}
                 title={t(item.labelKey, lang)}
               >
                 <div className={clsx(
-                  'w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150',
+                  'w-8 h-8 rounded-[10px] flex items-center justify-center transition-all duration-200',
                   activePanel === item.id && panelOpen
-                    ? 'bg-flip-500/20'
-                    : 'bg-white/[0.03] group-hover:bg-white/[0.08] group-hover:scale-105'
+                    ? 'bg-flip-500/15'
+                    : 'bg-white/[0.03] group-hover:bg-white/[0.06] group-hover:scale-105'
                 )}>
                   <item.icon size={14} />
                 </div>
-                <span className="text-[8px] leading-tight text-center">{t(item.labelKey, lang)}</span>
+                <span className="text-[9px] font-medium leading-tight text-center">{t(item.labelKey, lang)}</span>
               </button>
             ))}
           </div>
@@ -292,28 +283,28 @@ export default function Sidebar() {
       {panelOpen && (
         <div
           ref={panelRef}
-          className="absolute top-0 bottom-0 flex flex-col bg-surface-0/95 backdrop-blur-2xl border-r border-white/[0.06] shadow-2xl shadow-black/50 animate-slide-right"
-          style={{ left: RAIL_WIDTH, width: 280 }}
+          className="absolute top-0 bottom-0 flex flex-col vibrancy border-r border-white/[0.06] shadow-mac-lg animate-slide-right"
+          style={{ left: RAIL_WIDTH, width: 290 }}
         >
           {/* Panel header */}
           {(() => {
             const navItem = NAV_ITEMS.find(n => n.id === activePanel);
             const PanelIcon = navItem?.icon;
             return (
-              <div className="relative px-3 py-2.5 border-b border-white/5 overflow-hidden">
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-flip-500/60 via-accent-400/40 to-transparent" />
+              <div className="relative px-4 py-3 border-b border-white/[0.06] overflow-hidden">
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-flip-500/40 via-accent-400/20 to-transparent" />
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {PanelIcon && <PanelIcon size={13} className="text-flip-400/70" />}
-                    <span className="text-[11px] font-semibold text-white/70 uppercase tracking-wider">
+                  <div className="flex items-center gap-2.5">
+                    {PanelIcon && <PanelIcon size={14} className="text-flip-400/60" />}
+                    <span className="text-[12px] font-medium text-white/65 uppercase tracking-wider">
                       {t(navItem?.labelKey, lang) || 'Panel'}
                     </span>
                   </div>
                   <button
                     onClick={closePanel}
-                    className="w-6 h-6 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+                    className="w-7 h-7 rounded-[8px] flex items-center justify-center text-white/25 hover:text-white/55 hover:bg-white/[0.06] transition-colors"
                   >
-                    <X size={12} />
+                    <X size={13} />
                   </button>
                 </div>
               </div>
@@ -358,7 +349,7 @@ export default function Sidebar() {
         <>
           <div className="fixed inset-0" style={{ zIndex: 9990 }} onClick={() => setContextMenu(null)} />
           <div
-            className="fixed w-48 py-1.5 rounded-xl bg-surface-3/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50 animate-scale-in"
+            className="fixed w-48 py-1.5 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg animate-scale-in"
             style={{ top: contextMenu.y, left: contextMenu.x, zIndex: 9991 }}
           >
             <CtxItem icon={X} label="Close Tab" onClick={() => handleContextAction('close')} />

@@ -117,7 +117,6 @@ export default function NewTabPage({ isSplit = false }) {
   const [newsLoading, setNewsLoading] = useState(false);
   const [dailyQuote, setDailyQuote] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
-  const confettiRef = useRef(null);
 
   function fetchNews() {
     if (!window.flipAPI?.extFetchUrl) return;
@@ -225,9 +224,9 @@ export default function NewTabPage({ isSplit = false }) {
       {/* Ambient orbs (only when no wallpaper) */}
       {!settings.wallpaper && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <Orb color="rgba(255,98,52,0.12)" size={400} x={20} y={-5} delay={0} duration={8} />
-          <Orb color="rgba(45,212,168,0.08)" size={350} x={70} y={10} delay={2} duration={10} />
-          <Orb color="rgba(255,122,77,0.06)" size={300} x={50} y={50} delay={4} duration={12} />
+          <Orb color="rgba(255,98,52,0.08)" size={400} x={20} y={-5} delay={0} duration={8} />
+          <Orb color="rgba(45,212,168,0.05)" size={350} x={70} y={10} delay={2} duration={10} />
+          <Orb color="rgba(255,122,77,0.04)" size={300} x={50} y={50} delay={4} duration={12} />
         </div>
       )}
 
@@ -235,14 +234,14 @@ export default function NewTabPage({ isSplit = false }) {
         <div className="max-w-xl w-full">
           {/* Logo + greeting + time */}
           <div className="text-center mb-5" style={s(0)}>
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] mb-3 backdrop-blur-sm">
-              <FlipLogo size={28} className="drop-shadow-lg" />
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-[16px] bg-white/[0.04] border border-white/[0.06] mb-4 backdrop-blur-sm">
+              <FlipLogo size={30} className="drop-shadow-lg" />
             </div>
-            <p className="text-xs text-white/30 font-light tracking-wide mb-1">{greeting}</p>
-            <h1 className="text-5xl font-[200] text-white/90 tracking-tighter tabular-nums mb-0.5">{timeStr}</h1>
-            <p className="text-[12px] text-white/20 font-light">{dateStr}</p>
+            <p className="text-[13px] text-white/30 font-light tracking-wide mb-1">{greeting}</p>
+            <h1 className="text-5xl font-[200] text-white/90 tracking-tighter tabular-nums mb-1">{timeStr}</h1>
+            <p className="text-[13px] text-white/20 font-light">{dateStr}</p>
             {dailyQuote && (
-              <p className="text-[11px] text-white/25 font-light italic mt-2.5 max-w-sm mx-auto leading-relaxed">
+              <p className="text-[11px] text-white/20 font-light italic mt-3 max-w-sm mx-auto leading-relaxed">
                 "{dailyQuote}"
               </p>
             )}
@@ -250,7 +249,7 @@ export default function NewTabPage({ isSplit = false }) {
 
           {/* Search */}
           <form onSubmit={handleSearch} className="mb-6" style={s(1)}>
-            <div className="group flex items-center gap-3 px-5 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] focus-within:border-flip-500/30 focus-within:bg-white/[0.06] transition-all duration-300 backdrop-blur-sm">
+            <div className="group flex items-center gap-3 px-5 py-3.5 rounded-[16px] bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] focus-within:border-flip-500/25 focus-within:bg-white/[0.06] focus-within:shadow-mac transition-all duration-300 backdrop-blur-sm">
               <Search size={16} className="text-white/20 group-focus-within:text-flip-400/60 transition-colors" />
               <input
                 ref={inputRef}
@@ -258,11 +257,11 @@ export default function NewTabPage({ isSplit = false }) {
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 placeholder={t('searchOrType', lang)}
-                className="flex-1 bg-transparent text-[14px] text-white placeholder-white/20 outline-none"
+                className="flex-1 bg-transparent text-[14px] text-white/90 placeholder-white/20 outline-none"
                 spellCheck={false}
               />
               {searchValue && (
-                <button type="submit" className="w-7 h-7 rounded-full bg-flip-500/20 flex items-center justify-center text-flip-400 hover:bg-flip-500/30 transition-colors">
+                <button type="submit" className="w-8 h-8 rounded-[10px] bg-flip-500/15 flex items-center justify-center text-flip-400 hover:bg-flip-500/25 transition-colors">
                   <ArrowRight size={13} />
                 </button>
               )}
@@ -278,7 +277,7 @@ export default function NewTabPage({ isSplit = false }) {
                   onClick={() => goTo(link.url, link.name)}
                   className="group flex flex-col items-center gap-1 w-14 py-2 rounded-2xl hover:bg-white/[0.05] transition-all duration-200"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.05] flex items-center justify-center overflow-hidden group-hover:border-white/[0.1] group-hover:scale-105 transition-all duration-200 backdrop-blur-sm">
+                  <div className="w-10 h-10 rounded-[12px] bg-white/[0.04] border border-white/[0.06] flex items-center justify-center overflow-hidden group-hover:border-white/[0.1] group-hover:scale-105 transition-all duration-200 backdrop-blur-sm">
                     <img
                       src={link.icon}
                       alt={link.name}
@@ -288,7 +287,7 @@ export default function NewTabPage({ isSplit = false }) {
                     />
                     <span className="text-white/40 font-semibold text-xs hidden items-center justify-center">{link.name[0]}</span>
                   </div>
-                  <span className="text-[9px] text-white/25 group-hover:text-white/50 transition-colors font-medium truncate w-full text-center">
+                  <span className="text-[10px] text-white/25 group-hover:text-white/50 transition-colors font-medium truncate w-full text-center">
                     {link.name}
                   </span>
                 </button>
@@ -332,7 +331,7 @@ export default function NewTabPage({ isSplit = false }) {
                 <button
                   key={i}
                   onClick={() => goTo(item.link, item.title)}
-                  className="group flex gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 text-left backdrop-blur-sm"
+                  className="group flex gap-3 p-3 rounded-[14px] bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 text-left backdrop-blur-sm"
                 >
                   {item.thumb && (
                     <img
@@ -383,32 +382,46 @@ export default function NewTabPage({ isSplit = false }) {
         )}
       </div>
 
-      {/* Confetti canvas */}
-      {showCelebration && <ConfettiCanvas />}
+      {/* Tron-style orange light border glow on update */}
+      {showCelebration && <TronBorderGlow />}
 
-      {/* "What's new" toast — shown once after an update */}
+      {/* "What's new" changelog — centered modal */}
       {whatsNew && (
-        <div className="absolute bottom-5 right-5 z-20 max-w-xs animate-fade-in">
-          <div className="bg-surface-2/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 p-4">
-            <div className="flex items-center gap-2 mb-2.5">
-              <Sparkles size={13} className="text-flip-400" />
-              <span className="text-[11px] font-semibold text-white/80">What's new in v{whatsNew.version}</span>
-              <button onClick={() => { setWhatsNew(null); setShowCelebration(false); }} className="ml-auto text-white/20 hover:text-white/50 transition-colors">
-                <X size={12} />
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-[340px] max-h-[70vh] flex flex-col vibrancy border border-white/[0.08] rounded-[20px] shadow-mac-xl overflow-hidden">
+            {/* Tron accent line at top */}
+            <div className="h-[2px] bg-gradient-to-r from-transparent via-flip-500 to-transparent" />
+
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3 text-center">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-[12px] bg-gradient-to-br from-flip-500/20 to-accent-400/10 border border-flip-500/20 flex items-center justify-center">
+                <Sparkles size={18} className="text-flip-400" />
+              </div>
+              <h2 className="text-[15px] font-bold text-white/90">Updated to v{whatsNew.version}</h2>
+              <p className="text-[11px] text-white/35 mt-1">Here's what changed</p>
+            </div>
+
+            {/* Notes list */}
+            <div className="flex-1 overflow-y-auto px-5 pb-2 scrollbar-none">
+              <ul className="space-y-2">
+                {whatsNew.notes.map((note, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-[11px] text-white/55 leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-flip-500/60 shrink-0" />
+                    <span>{note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-white/[0.06]">
+              <button
+                onClick={() => { setWhatsNew(null); setShowCelebration(false); }}
+                className="w-full py-2 rounded-[12px] bg-flip-500/15 border border-flip-500/20 text-[12px] font-medium text-flip-400 hover:bg-flip-500/25 transition-colors"
+              >
+                Got it
               </button>
             </div>
-            <div className="text-center mb-3">
-              <p className="text-[13px] font-bold text-white/90">Flip Browser is now complete!</p>
-              <p className="text-[10px] text-white/40 mt-0.5">Thank you for being part of the journey.</p>
-            </div>
-            <ul className="space-y-1 mb-1">
-              {whatsNew.notes.map((note, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-[10px] text-white/40 leading-tight">
-                  <span className="text-flip-400/70 mt-px shrink-0">•</span>
-                  <span>{note}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       )}
@@ -416,95 +429,59 @@ export default function NewTabPage({ isSplit = false }) {
   );
 }
 
-function ConfettiCanvas() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let w = (canvas.width = canvas.offsetWidth);
-    let h = (canvas.height = canvas.offsetHeight);
-    const colors = ['#ff6234', '#fbbf24', '#3b82f6', '#22c55e', '#a855f7', '#ec4899', '#2dd4a8', '#f97316', '#06b6d4'];
-    const particles = [];
-
-    for (let i = 0; i < 150; i++) {
-      particles.push({
-        x: Math.random() * w,
-        y: Math.random() * h * -1.5,
-        w: 4 + Math.random() * 6,
-        h: 6 + Math.random() * 8,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        vx: (Math.random() - 0.5) * 3,
-        vy: 2 + Math.random() * 4,
-        rot: Math.random() * 360,
-        rotV: (Math.random() - 0.5) * 8,
-        opacity: 0.9 + Math.random() * 0.1,
-        shape: Math.random() > 0.5 ? 'rect' : 'circle',
-      });
-    }
-
-    let raf;
-    let fadeStart = 0;
-    const duration = 7000;
-    const startTime = Date.now();
-
-    function draw() {
-      const elapsed = Date.now() - startTime;
-      const fadeAlpha = elapsed > duration - 2000 ? Math.max(0, 1 - (elapsed - (duration - 2000)) / 2000) : 1;
-      ctx.clearRect(0, 0, w, h);
-
-      for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.04;
-        p.rot += p.rotV;
-        p.vx *= 0.999;
-
-        if (p.y > h + 20) continue;
-
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rot * Math.PI) / 180);
-        ctx.globalAlpha = p.opacity * fadeAlpha;
-
-        if (p.shape === 'rect') {
-          ctx.fillStyle = p.color;
-          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        } else {
-          ctx.beginPath();
-          ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-
-      if (elapsed < duration) {
-        raf = requestAnimationFrame(draw);
-      }
-    }
-
-    draw();
-
-    const handleResize = () => {
-      w = canvas.width = canvas.offsetWidth;
-      h = canvas.height = canvas.offsetHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
+function TronBorderGlow() {
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 z-30 pointer-events-none"
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-[inherit]">
+      {/* Rotating conic-gradient light that traces the border like a Tron light cycle */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'transparent',
+          border: '2px solid transparent',
+          borderRadius: 'inherit',
+          maskImage: 'linear-gradient(#000,#000)',
+          WebkitMaskImage: 'linear-gradient(#000,#000)',
+        }}
+      >
+        {/* The moving orange light beam */}
+        <div
+          className="absolute -inset-[2px]"
+          style={{
+            background: 'conic-gradient(from var(--tron-angle, 0deg) at 50% 50%, transparent 0%, transparent 70%, #ff6234 78%, #f97316 82%, #fbbf24 86%, transparent 94%, transparent 100%)',
+            animation: 'tron-spin 3s linear infinite',
+            borderRadius: 'inherit',
+            mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+            maskComposite: 'exclude',
+            WebkitMaskComposite: 'xor',
+            padding: '2px',
+          }}
+        />
+      </div>
+      {/* Soft inner glow */}
+      <div
+        className="absolute inset-0"
+        style={{
+          boxShadow: 'inset 0 0 60px rgba(249,115,22,0.06), inset 0 0 120px rgba(255,98,52,0.03)',
+          animation: 'tron-pulse 3s ease-in-out infinite',
+          borderRadius: 'inherit',
+        }}
+      />
+      <style>{`
+        @keyframes tron-spin {
+          from { --tron-angle: 0deg; }
+          to   { --tron-angle: 360deg; }
+        }
+        @keyframes tron-pulse {
+          0%, 100% { opacity: 0.5; }
+          50%      { opacity: 1; }
+        }
+        @property --tron-angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+      `}</style>
+    </div>
   );
 }
 

@@ -145,7 +145,7 @@ export default function ExtensionManager() {
           </div>
           <button
             onClick={handleReload}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/5 transition-colors"
+            className="w-8 h-8 rounded-[10px] flex items-center justify-center text-white/25 hover:text-white/50 hover:bg-white/[0.05] transition-colors"
             title="Reload extensions"
           >
             <RefreshCw size={12} />
@@ -155,13 +155,13 @@ export default function ExtensionManager() {
         {/* Install from Folder — disabled */}
 
         {error && (
-          <div className="mt-2 flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+          <div className="mt-2 flex items-start gap-2 p-2.5 rounded-[12px] bg-red-500/10 border border-red-500/15">
             <AlertCircle size={12} className="text-red-400 mt-0.5 flex-shrink-0" />
             <span className="text-[10px] text-red-300">{error}</span>
           </div>
         )}
         {success && (
-          <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20 animate-fade-in">
+          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-[12px] bg-green-500/10 border border-green-500/15 animate-fade-in">
             <Check size={12} className="text-green-400" />
             <span className="text-[10px] text-green-300">{success}</span>
           </div>
@@ -172,7 +172,7 @@ export default function ExtensionManager() {
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {extensions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-[16px] bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
               <Puzzle size={24} className="text-white/10" />
             </div>
             <p className="text-xs text-white/40 mb-1">No extensions yet</p>
@@ -201,8 +201,8 @@ export default function ExtensionManager() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-white/[0.04]">
-        <div className="flex items-center gap-3 text-[9px] text-white/15">
+      <div className="px-4 py-2.5 border-t border-white/[0.06]">
+        <div className="flex items-center gap-3 text-[9px] text-white/20">
           <div className="flex items-center gap-1">
             <Braces size={8} /> JSX + manifest.json
           </div>
@@ -226,10 +226,10 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
   return (
     <div
       className={clsx(
-        'rounded-2xl border overflow-hidden transition-all duration-200',
+        'rounded-[16px] border overflow-hidden transition-all duration-200',
         enabled
           ? 'border-white/[0.06] hover:border-white/[0.1]'
-          : 'border-white/[0.03] opacity-50'
+          : 'border-white/[0.04] opacity-50'
       )}
     >
       {/* Gradient header strip */}
@@ -239,7 +239,7 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
         <div className="flex items-start gap-3">
           {/* Icon */}
           <div className={clsx(
-            'w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all',
+            'w-11 h-11 rounded-[14px] flex items-center justify-center text-lg flex-shrink-0 transition-all',
             enabled
               ? `bg-gradient-to-br ${gradient}`
               : 'bg-white/[0.03]'
@@ -254,7 +254,7 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <h3 className="text-[12px] font-medium text-white/85 truncate">
+              <h3 className="text-[13px] font-medium text-white/85 truncate">
                 {manifest.name || 'Unnamed'}
               </h3>
               {isWebview && (
@@ -267,7 +267,7 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
 
             {/* Meta row */}
             <div className="flex items-center gap-2 mt-2">
-              <span className={clsx('text-[9px] rounded-md px-1.5 py-0.5 font-medium', typeConf.bg, typeConf.color)}>
+              <span className={clsx('text-[9px] rounded-[6px] px-1.5 py-0.5 font-medium', typeConf.bg, typeConf.color)}>
                 {typeConf.label}
               </span>
               <span className="text-[9px] text-white/15">v{manifest.version || '1.0'}</span>
@@ -281,7 +281,7 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
           <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
             <button
               onClick={onToggle}
-              className="p-0.5 rounded-lg hover:bg-white/5 transition-colors"
+              className="p-0.5 rounded-[10px] hover:bg-white/[0.05] transition-colors"
               title={enabled ? 'Disable' : 'Enable'}
             >
               {enabled ? (
@@ -294,7 +294,7 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
               <button
                 onClick={onUninstall}
                 disabled={isUninstalling}
-                className="p-1 rounded-lg text-white/10 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                className="p-1 rounded-[10px] text-white/10 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                 title="Uninstall"
               >
                 {isUninstalling ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
@@ -305,11 +305,11 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
 
         {/* Permissions */}
         {enabled && manifest.permissions && manifest.permissions.length > 0 && (
-          <div className="flex items-center gap-1 mt-2.5 pl-[52px] flex-wrap">
+          <div className="flex items-center gap-1 mt-2.5 pl-[56px] flex-wrap">
             {manifest.permissions.map((perm) => (
               <span
                 key={perm}
-                className="text-[8px] bg-white/[0.04] text-white/25 rounded-md px-1.5 py-0.5 font-medium uppercase tracking-wider"
+                className="text-[8px] bg-white/[0.04] text-white/25 rounded-[6px] px-1.5 py-0.5 font-medium uppercase tracking-wider"
               >
                 {perm}
               </span>

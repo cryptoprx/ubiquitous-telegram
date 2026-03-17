@@ -220,16 +220,17 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
       // Polyfill getUserMedia to use the parent window's navigator as fallback.
       (function() {
         try {
-          const parentMedia = window.parent?.navigator?.mediaDevices;
+          // Access window.parent.navigator in a separate try — it throws
+          // a DOMException in cross-origin / sandboxed srcdoc frames.
+          var parentMedia;
+          try { parentMedia = window.parent && window.parent.navigator && window.parent.navigator.mediaDevices; } catch(_) { return; }
           if (parentMedia && parentMedia.getUserMedia) {
-            const origGetUserMedia = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);
+            var origGetUserMedia = navigator.mediaDevices && navigator.mediaDevices.getUserMedia && navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
             if (navigator.mediaDevices) {
               navigator.mediaDevices.getUserMedia = async function(constraints) {
                 try {
                   if (origGetUserMedia) return await origGetUserMedia(constraints);
-                } catch(e) {
-                  console.log('[FlipSDK] iframe getUserMedia failed, trying parent:', e.name);
-                }
+                } catch(e) { /* fall through to parent */ }
                 return parentMedia.getUserMedia(constraints);
               };
               navigator.mediaDevices.enumerateDevices = function() {
@@ -239,7 +240,7 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
               Object.defineProperty(navigator, 'mediaDevices', { value: parentMedia, writable: false });
             }
           }
-        } catch(e) { console.warn('[FlipSDK] Media polyfill skipped:', e.message); }
+        } catch(e) { /* silently skip — polyfill not critical */ }
       })();
 
       // Handle responses from parent

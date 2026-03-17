@@ -31,9 +31,17 @@ module.exports = {
       },
       borderRadius: {
         'pill': '9999px',
+        'mac': '14px',
+        'mac-lg': '18px',
       },
       backdropBlur: {
         xs: '2px',
+        '3xl': '40px',
+      },
+      boxShadow: {
+        'mac': '0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.04)',
+        'mac-lg': '0 8px 32px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.04)',
+        'mac-xl': '0 16px 48px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
       },
       animation: {
         'fade-in': 'fadeIn 0.15s ease-out',
@@ -66,8 +74,8 @@ module.exports = {
           '100%': { opacity: '1', transform: 'rotateY(0deg) scale(1)' },
         },
         glow: {
-          '0%': { boxShadow: '0 0 12px rgba(255,98,52,0.15)' },
-          '100%': { boxShadow: '0 0 24px rgba(255,98,52,0.3)' },
+          '0%': { boxShadow: '0 0 12px rgba(255,98,52,0.1)' },
+          '100%': { boxShadow: '0 0 20px rgba(255,98,52,0.2)' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },

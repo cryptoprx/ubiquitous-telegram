@@ -7,31 +7,117 @@ const FONT_FAMILIES = {
   mono: "'JetBrains Mono', 'Fira Code', monospace",
 };
 
-function buildReadingCSS(rs) {
+function buildReaderJS(rs) {
   const ff = FONT_FAMILIES[rs?.fontFamily] || FONT_FAMILIES.serif;
   const fs = rs?.fontSize || 18;
   const bg = rs?.bgColor || '#1a1a1a';
   const tc = rs?.textColor || '#e0e0e0';
-  return `
-  nav, header, footer, aside, .sidebar, .ad, .ads, .advertisement,
-  .social-share, .comments, .comment-section, .related-posts,
-  .cookie-banner, .popup, .modal, .overlay, .newsletter,
-  [role="banner"], [role="navigation"], [role="complementary"],
-  [role="contentinfo"], .share-buttons, .breadcrumbs { display: none !important; }
-  body {
-    max-width: 680px !important; margin: 0 auto !important;
-    padding: 40px 24px !important; background: ${bg} !important;
-    color: ${tc} !important; font-family: ${ff} !important;
-    font-size: ${fs}px !important; line-height: 1.8 !important;
+  return `(function(){
+  if(window.__flipReaderActive) return;
+  window.__flipReaderActive=true;
+  window.__flipOrigHTML=document.documentElement.outerHTML;
+
+  /* ---------- Simplified Readability extraction ---------- */
+  function scoreNode(el){
+    var s=0, tag=el.tagName;
+    if(tag==='ARTICLE') s+=30;
+    if(tag==='SECTION') s+=10;
+    if(tag==='DIV') s+=5;
+    var cls=(el.className||'')+(el.id||'');
+    if(/article|post|entry|content|story|body-text|main-content/i.test(cls)) s+=25;
+    if(/comment|sidebar|footer|header|nav|menu|ad|promo|related|widget|social|share|cookie|popup|modal|newsletter|breadcrumb/i.test(cls)) s-=25;
+    return s;
   }
-  img { max-width: 100% !important; height: auto !important; border-radius: 8px !important; margin: 16px 0 !important; }
-  a { color: #ff7a4d !important; }
-  h1, h2, h3, h4, h5, h6 { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; color: #ffffff !important; line-height: 1.3 !important; margin-top: 1.5em !important; }
-  pre, code { background: rgba(255,255,255,0.05) !important; color: ${tc} !important; border-radius: 6px !important; padding: 2px 6px !important; font-size: 14px !important; }
-  pre { padding: 16px !important; overflow-x: auto !important; }
-  blockquote { border-left: 3px solid #ff7a4d !important; margin-left: 0 !important; padding-left: 20px !important; color: #aaa !important; }
-  table { border-collapse: collapse !important; } th, td { border: 1px solid #333 !important; padding: 8px 12px !important; }
-`;
+  function textLen(el){ return (el.innerText||'').length; }
+  var candidates=[].slice.call(document.querySelectorAll('article, [role=main], main, .post-content, .entry-content, .article-body, .story-body, #article-body'));
+  if(!candidates.length) candidates=[].slice.call(document.querySelectorAll('div, section'));
+  var best=null, bestScore=-Infinity;
+  candidates.forEach(function(el){
+    var tl=textLen(el);
+    if(tl<140) return;
+    var sc=scoreNode(el)+Math.min(tl/10,200);
+    var pCount=el.querySelectorAll('p').length;
+    sc+=pCount*3;
+    var linkDensity=0;
+    var links=el.querySelectorAll('a');
+    var linkText=0; links.forEach(function(a){linkText+=(a.innerText||'').length;});
+    if(tl>0) linkDensity=linkText/tl;
+    if(linkDensity>0.5) sc-=50;
+    if(sc>bestScore){bestScore=sc;best=el;}
+  });
+  if(!best) best=document.body;
+
+  /* Extract clean content */
+  var clone=best.cloneNode(true);
+  /* Remove unwanted elements from clone */
+  var junk=clone.querySelectorAll('script,style,noscript,iframe,nav,footer,header,.ad,.ads,.advertisement,.social-share,.comments,.related-posts,.cookie-banner,.popup,.modal,.overlay,.newsletter,[role=banner],[role=navigation],[role=complementary],[role=contentinfo],.share-buttons,.breadcrumbs,aside,.sidebar');
+  for(var i=0;i<junk.length;i++) junk[i].remove();
+
+  /* Get title */
+  var title=document.title;
+  var h1=document.querySelector('h1');
+  if(h1) title=h1.innerText||title;
+
+  /* Get site name */
+  var siteName='';
+  var ogSite=document.querySelector('meta[property="og:site_name"]');
+  if(ogSite) siteName=ogSite.getAttribute('content')||'';
+
+  /* Get reading time */
+  var wordCount=(clone.innerText||'').split(/\\s+/).length;
+  var readMin=Math.max(1,Math.round(wordCount/230));
+
+  /* Build clean page */
+  var content=clone.innerHTML;
+  document.documentElement.innerHTML='<head><meta charset="utf-8"><title>'+title.replace(/</g,'&lt;')+'</title></head><body>'+
+    '<div id="flip-reader-root">'+
+    '<div class="flip-reader-meta">'+
+      (siteName?'<span class="flip-reader-site">'+siteName.replace(/</g,'&lt;')+'</span>':'')+
+      '<span class="flip-reader-time">'+readMin+' min read · '+wordCount.toLocaleString()+' words</span>'+
+    '</div>'+
+    '<h1 class="flip-reader-title">'+title.replace(/</g,'&lt;')+'</h1>'+
+    '<div class="flip-reader-content">'+content+'</div>'+
+    '</div></body>';
+
+  /* Apply styles */
+  var s=document.createElement('style');
+  s.textContent=\`
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body{background:${bg};color:${tc};font-family:${ff};font-size:${fs}px;line-height:1.8;-webkit-font-smoothing:antialiased;}
+    #flip-reader-root{max-width:680px;margin:0 auto;padding:48px 24px 80px;}
+    .flip-reader-meta{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:12px;color:rgba(255,255,255,0.3);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+    .flip-reader-site{color:#ff7a4d;font-weight:600;}
+    .flip-reader-title{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:2em;font-weight:700;color:#fff;line-height:1.25;margin-bottom:32px;}
+    .flip-reader-content p{margin-bottom:1.2em;}
+    .flip-reader-content img{max-width:100%;height:auto;border-radius:8px;margin:20px 0;}
+    .flip-reader-content a{color:#ff7a4d;text-decoration:underline;text-underline-offset:2px;}
+    .flip-reader-content h1,.flip-reader-content h2,.flip-reader-content h3,.flip-reader-content h4,.flip-reader-content h5,.flip-reader-content h6{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;line-height:1.3;margin:1.5em 0 0.5em;}
+    .flip-reader-content pre,.flip-reader-content code{background:rgba(255,255,255,0.05);color:${tc};border-radius:6px;padding:2px 6px;font-size:14px;}
+    .flip-reader-content pre{padding:16px;overflow-x:auto;margin:16px 0;}
+    .flip-reader-content blockquote{border-left:3px solid #ff7a4d;margin:16px 0;padding-left:20px;color:#aaa;font-style:italic;}
+    .flip-reader-content table{border-collapse:collapse;width:100%;margin:16px 0;}
+    .flip-reader-content th,.flip-reader-content td{border:1px solid #333;padding:8px 12px;}
+    .flip-reader-content ul,.flip-reader-content ol{padding-left:24px;margin-bottom:1em;}
+    .flip-reader-content li{margin-bottom:0.4em;}
+    .flip-reader-content figure{margin:20px 0;}
+    .flip-reader-content figcaption{font-size:13px;color:rgba(255,255,255,0.35);margin-top:8px;text-align:center;}
+    ::selection{background:#ff7a4d;color:#fff;}
+    ::-webkit-scrollbar{width:6px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
+  \`;
+  document.head.appendChild(s);
+})();`;
+}
+
+function buildReaderExitJS() {
+  return `(function(){
+  if(!window.__flipReaderActive||!window.__flipOrigHTML) return;
+  window.__flipReaderActive=false;
+  document.documentElement.innerHTML=window.__flipOrigHTML;
+  /* Re-run page scripts won't work after innerHTML replace, so just reload */
+  location.reload();
+})();`;
 }
 
 const isPrivateWindow = new URLSearchParams(window.location.search).get('private') === '1';
@@ -535,7 +621,7 @@ export default function WebContent({ tabId: overrideTabId }) {
     };
   }, []);
 
-  // Reading mode: inject/remove CSS when toggled (uses dynamic reader settings)
+  // Reading mode: extract article content when toggled on, reload page when toggled off
   useEffect(() => {
     let prevRM = useBrowserStore.getState().readingMode;
     let prevRS = JSON.stringify(useBrowserStore.getState().readerSettings);
@@ -549,17 +635,11 @@ export default function WebContent({ tabId: overrideTabId }) {
       const webview = webviewRefs.current[state.activeTabId];
       if (!webview) return;
       if (rm && (rmChanged || rsChanged)) {
-        // Remove old CSS first
-        if (webview._readingCSSKey) {
-          webview.removeInsertedCSS(webview._readingCSSKey).catch(() => {});
-        }
-        const css = buildReadingCSS(state.readerSettings);
-        webview.insertCSS(css).then((key) => {
-          webview._readingCSSKey = key;
-        }).catch(() => {});
-      } else if (!rm && rmChanged && webview._readingCSSKey) {
-        webview.removeInsertedCSS(webview._readingCSSKey).catch(() => {});
-        webview._readingCSSKey = null;
+        // Extract article content and render clean page
+        webview.executeJavaScript(buildReaderJS(state.readerSettings)).catch(() => {});
+      } else if (!rm && rmChanged) {
+        // Exit reader mode — reload page to restore original
+        webview.executeJavaScript(buildReaderExitJS()).catch(() => {});
       }
     });
     return unsub;
@@ -969,7 +1049,7 @@ export default function WebContent({ tabId: overrideTabId }) {
     <div className="flex-1 relative overflow-hidden bg-surface-0" ref={snipContainerRef}>
       {/* Find in Page bar */}
       {findBarOpen && (
-        <div className="absolute top-0 right-0 z-[9997] flex items-center gap-2 m-3 px-3 py-2 rounded-xl bg-[#1c1917]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60 animate-fade-in">
+        <div className="absolute top-0 right-0 z-[9997] flex items-center gap-2 m-3 px-3.5 py-2.5 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg animate-fade-in">
           <input
             ref={findInputRef}
             value={findQuery}
@@ -983,7 +1063,7 @@ export default function WebContent({ tabId: overrideTabId }) {
               if (e.key === 'Escape') stopFind();
             }}
             placeholder="Find in page..."
-            className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/90 placeholder-white/30 outline-none focus:border-flip-500/50 w-52"
+            className="bg-white/[0.04] border border-white/[0.06] rounded-[10px] px-3 py-1.5 text-[13px] text-white/90 placeholder-white/25 outline-none focus:border-flip-500/40 w-52"
             autoFocus
           />
           {findResult && findQuery && (
@@ -1041,7 +1121,7 @@ export default function WebContent({ tabId: overrideTabId }) {
             </>
           )}
           {/* Instructions bar */}
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-surface-3/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-2 flex items-center gap-3 shadow-2xl shadow-black/50">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 vibrancy border border-white/[0.08] rounded-[14px] px-4 py-2.5 flex items-center gap-3 shadow-mac-lg">
             <span className="text-[11px] text-white/70">Click and drag to select an area</span>
             <span className="text-[10px] text-white/30">ESC to cancel</span>
           </div>
@@ -1051,7 +1131,7 @@ export default function WebContent({ tabId: overrideTabId }) {
       {/* Custom context menu */}
       {ctxMenu && (
         <div
-          className="fixed z-[9999] min-w-[180px] py-1.5 rounded-xl bg-[#1c1917]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60 animate-fade-in"
+          className="fixed z-[9999] min-w-[180px] py-1.5 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg animate-fade-in"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -1086,7 +1166,7 @@ export default function WebContent({ tabId: overrideTabId }) {
               <div className="relative" onMouseEnter={() => setAiSubMenu('translate')} onMouseLeave={() => setAiSubMenu(null)}>
                 <CtxItem label="✦ Translate ▸" accent onClick={() => setAiSubMenu(aiSubMenu === 'translate' ? null : 'translate')} />
                 {aiSubMenu === 'translate' && (
-                  <div className="absolute left-full top-0 ml-0.5 min-w-[120px] py-1.5 rounded-xl bg-[#1c1917]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60">
+                  <div className="absolute left-full top-0 ml-0.5 min-w-[120px] py-1.5 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg">
                     {['English', 'Spanish', 'French', 'German', 'Portuguese', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 'Russian', 'Italian'].map(lang => (
                       <CtxItem key={lang} label={lang} onClick={() => ctxAction(() => {
                         sendAiPrompt(`Translate the following text to ${lang}. Only output the translation, nothing else:\n\n"${ctxMenu.selectionText}"`, 'translate', { x: ctxMenu.x, y: ctxMenu.y });
@@ -1099,7 +1179,7 @@ export default function WebContent({ tabId: overrideTabId }) {
                 <div className="relative" onMouseEnter={() => setAiSubMenu('rewrite')} onMouseLeave={() => setAiSubMenu(null)}>
                   <CtxItem label="✦ Rewrite ▸" accent onClick={() => setAiSubMenu(aiSubMenu === 'rewrite' ? null : 'rewrite')} />
                   {aiSubMenu === 'rewrite' && (
-                    <div className="absolute left-full top-0 ml-0.5 min-w-[140px] py-1.5 rounded-xl bg-[#1c1917]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60">
+                    <div className="absolute left-full top-0 ml-0.5 min-w-[140px] py-1.5 rounded-[14px] vibrancy border border-white/[0.08] shadow-mac-lg">
                       <CtxItem label="Fix grammar" onClick={() => ctxAction(() => {
                         sendAiPrompt(`Fix the grammar and spelling in this text. Only output the corrected text:\n\n"${ctxMenu.selectionText}"`, 'rewrite', { x: ctxMenu.x, y: ctxMenu.y });
                       })} />
@@ -1155,8 +1235,6 @@ export default function WebContent({ tabId: overrideTabId }) {
                   label={ext.manifest.toolbar_action.label || ext.manifest.name}
                   accent
                   onClick={() => ctxAction(() => {
-                    const store = useBrowserStore.getState();
-                    if (store.sidebarView !== 'extensions') store.setSidebarView('extensions');
                     window.dispatchEvent(new CustomEvent('flip-open-extension', { detail: { extensionId: ext.id } }));
                   })}
                 />

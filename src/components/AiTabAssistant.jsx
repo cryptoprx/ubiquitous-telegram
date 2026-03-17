@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bot, Send, X, Trash2, Copy, Check, Loader2, FileText, ArrowDownUp } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../store/browserStore';
+import { sileo } from 'sileo';
 
 // AI Tab Assistant — "Chat with this page" sidebar panel
 // Extracts page content and enables multi-turn conversation
@@ -265,6 +266,7 @@ export default function AiTabAssistant({ onClose }) {
                   onClick={() => {
                     navigator.clipboard.writeText(msg.content);
                     setCopied(i);
+                    sileo.success("Copied to clipboard!");
                     setTimeout(() => setCopied(null), 1500);
                   }}
                   className="mt-1 text-[8px] text-white/20 hover:text-white/50 transition-colors"

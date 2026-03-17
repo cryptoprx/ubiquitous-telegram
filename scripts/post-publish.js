@@ -22,7 +22,7 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-const PORTAL_URL = 'https://flipdown-silk.vercel.app/api/update-version';
+const PORTAL_URL = 'https://flip-dev-portal-nine.vercel.app/api/update-version';
 const GH_OWNER = 'cryptoprx';
 const GH_REPO = 'ubiquitous-telegram';
 const API_KEY = process.env.PORTAL_API_KEY;

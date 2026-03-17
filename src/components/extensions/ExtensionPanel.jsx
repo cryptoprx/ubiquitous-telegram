@@ -86,26 +86,26 @@ export default function ExtensionPanel() {
 
   return (
     <div
-      className="flex flex-col h-full bg-surface-1/95 backdrop-blur-xl border-l border-white/5 animate-slide-right"
+      className="flex flex-col h-full vibrancy border-l border-white/[0.06] animate-slide-right"
       style={{ width: panelWidth, minWidth: panelWidth, maxWidth: 420 }}
     >
       {/* Extension dock bar */}
-      <div className="flex items-center gap-1 px-2 py-2 border-b border-white/[0.04]">
+      <div className="flex items-center gap-1.5 px-2.5 py-2.5 border-b border-white/[0.06]">
         {/* Manager button */}
         <button
           onClick={() => setActiveExtId(null)}
           className={clsx(
-            'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200',
+            'flex items-center justify-center w-9 h-9 rounded-[12px] transition-all duration-200',
             !activeExtId
-              ? 'bg-flip-500/15 text-flip-400 ring-1 ring-flip-500/20'
-              : 'text-white/30 hover:text-white/50 hover:bg-white/5'
+              ? 'bg-flip-500/10 text-flip-400 ring-1 ring-flip-500/15'
+              : 'text-white/30 hover:text-white/50 hover:bg-white/[0.05]'
           )}
           title="Extension Manager"
         >
           <Grid3X3 size={14} />
         </button>
 
-        <div className="w-px h-5 bg-white/5 mx-1" />
+        <div className="w-px h-5 bg-white/[0.06] mx-1" />
 
         {/* Extension icon buttons */}
         {enabledSidebarExts.map((ext) => {
@@ -117,10 +117,10 @@ export default function ExtensionPanel() {
               key={ext.id}
               onClick={() => setActiveExtId(ext.id)}
               className={clsx(
-                'relative flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 group',
+                'relative flex items-center justify-center w-9 h-9 rounded-[12px] transition-all duration-200 group',
                 isActive
-                  ? 'bg-flip-500/15 ring-1 ring-flip-500/20 scale-105'
-                  : 'hover:bg-white/5 hover:scale-105'
+                  ? 'bg-flip-500/10 ring-1 ring-flip-500/15 scale-105'
+                  : 'hover:bg-white/[0.05] hover:scale-105'
               )}
               title={ext.manifest.name || ext.id}
             >
@@ -148,7 +148,7 @@ export default function ExtensionPanel() {
         {/* Marketplace link */}
         <button
           onClick={() => useBrowserStore.getState().addTab('flip://marketplace')}
-          className="flex items-center justify-center w-8 h-8 rounded-xl text-white/20 hover:text-flip-400 hover:bg-flip-500/10 transition-all duration-200"
+          className="flex items-center justify-center w-9 h-9 rounded-[12px] text-white/20 hover:text-flip-400 hover:bg-flip-500/10 transition-all duration-200"
           title="Get Extensions"
         >
           <Store size={14} />
@@ -156,7 +156,7 @@ export default function ExtensionPanel() {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-surface-0/30">
         {activeExt ? (
           <ExtensionHost
             extension={activeExt}

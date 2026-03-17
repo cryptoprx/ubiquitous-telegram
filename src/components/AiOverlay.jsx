@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Copy, Check, Loader2, Bot, Maximize2, RotateCw } from 'lucide-react';
+import { sileo } from 'sileo';
 import clsx from 'clsx';
 
 // Floating AI response overlay — shown for inline AI actions (context menu, page summarize)
@@ -153,6 +154,7 @@ export default function AiOverlay() {
                 onClick={() => {
                   navigator.clipboard.writeText(response);
                   setCopied(true);
+                  sileo.success("Copied to clipboard!");
                   setTimeout(() => setCopied(false), 1500);
                 }}
                 className="p-1 rounded-md text-white/25 hover:text-white/60 hover:bg-white/5 transition-colors"

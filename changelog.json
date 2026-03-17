@@ -1,4 +1,46 @@
 {
+  "1.2.92": [
+    "Integrated Sileo React library for physics-based toast animations across the app",
+    "Added gooey morphing success notifications for copying wallets, mnemonics, and passwords",
+    "Added interactive toast notifications for extension installation and bookmarking",
+    "Fixed a crash that occurred when clicking the Shortcuts button in the sidebar"
+  ],
+  "1.2.91": [
+    "Integrated Sileo React library for physics-based toast animations across the app",
+    "Added gooey morphing success notifications for copying wallets, mnemonics, and passwords",
+    "Added interactive toast notifications for extension installation and bookmarking",
+    "Fixed a crash that occurred when clicking the Shortcuts button in the sidebar"
+  ],
+  "1.2.90": [
+    "Extension Dock — macOS-style bottom dock bar replaces the old sidebar extension panel, centered floating pill with vibrancy",
+    "Floating extension panels — extensions now open as floating windows from the dock instead of fixed sidebar panels",
+    "Extension Manager accessible from dock grid button, opens as floating panel",
+    "Dock auto-hide — dock slides away when pointer is not near the bottom, reveals on hover with a subtle pill indicator when hidden",
+    "Tron border glow — update celebration replaced confetti with a rotating orange light beam tracing the page border",
+    "Changelog popup redesigned — centered modal with vibrancy, gradient accent line, scrollable notes, and Got it button",
+    "Update notification redesigned — vibrancy card with Tron accent line, gradient icon containers, orange glow progress bar",
+    "Extension panel/manager/marketplace styling refined with macOS squircle radii and vibrancy"
+  ],
+  "1.2.89": [
+    "Extension Dock — macOS-style bottom dock bar replaces the old sidebar extension panel, centered floating pill with vibrancy",
+    "Floating extension panels — extensions now open as floating windows from the dock instead of fixed sidebar panels",
+    "Extension Manager accessible from dock grid button, opens as floating panel",
+    "Dock auto-hide — dock slides away when pointer is not near the bottom, reveals on hover with a subtle pill indicator when hidden",
+    "Tron border glow — update celebration replaced confetti with a rotating orange light beam tracing the page border",
+    "Changelog popup redesigned — centered modal with vibrancy, gradient accent line, scrollable notes, and Got it button",
+    "Update notification redesigned — vibrancy card with Tron accent line, gradient icon containers, orange glow progress bar",
+    "Extension panel/manager/marketplace styling refined with macOS squircle radii and vibrancy"
+  ],
+  "1.2.88": [
+    "Extension Dock — macOS-style bottom dock bar replaces the old sidebar extension panel, centered floating pill with vibrancy",
+    "Floating extension panels — extensions now open as floating windows from the dock instead of fixed sidebar panels",
+    "Extension Manager accessible from dock grid button, opens as floating panel",
+    "Dock auto-hide — dock slides away when pointer is not near the bottom, reveals on hover with a subtle pill indicator when hidden",
+    "Tron border glow — update celebration replaced confetti with a rotating orange light beam tracing the page border",
+    "Changelog popup redesigned — centered modal with vibrancy, gradient accent line, scrollable notes, and Got it button",
+    "Update notification redesigned — vibrancy card with Tron accent line, gradient icon containers, orange glow progress bar",
+    "Extension panel/manager/marketplace styling refined with macOS squircle radii and vibrancy"
+  ],
   "1.2.87": [
     "Certificate error interstitial: bad SSL certs now show a full 'Your connection is not private' warning page",
     "Webview crash recovery: crashed tabs show 'This page has crashed' with a Reload button instead of going blank",
