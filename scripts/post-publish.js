@@ -83,11 +83,14 @@ async function updatePortal() {
 
   const text = await resp.text();
   if (!resp.ok) {
-    console.error(`[Post-Publish] Portal returned ${resp.status}: ${text}`);
+    console.warn(`[Post-Publish] ⚠️  Portal returned ${resp.status} — skipping portal sync (GitHub Release is already live).`);
     if (resp.status === 401) {
-      console.error('[Post-Publish] API_KEY mismatch — make sure the same key is set in Vercel env vars (API_KEY) and local .env (PORTAL_API_KEY)');
+      console.warn('[Post-Publish] API_KEY mismatch — make sure the same key is set in Vercel env vars (API_KEY) and local .env (PORTAL_API_KEY)');
     }
-    process.exit(1);
+    if (resp.status === 404) {
+      console.warn('[Post-Publish] Portal route /api/update-version not found — deploy it to Vercel to enable auto-sync.');
+    }
+    return; // non-fatal — release is already published on GitHub
   }
 
   let data;
