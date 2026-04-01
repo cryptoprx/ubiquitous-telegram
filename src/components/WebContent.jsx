@@ -7,12 +7,16 @@ const FONT_FAMILIES = {
   mono: "'JetBrains Mono', 'Fira Code', monospace",
 };
 
+// Memoize by serialized settings key so the 2KB injection string isn't rebuilt each call
+const _readerJSCache = new Map();
 function buildReaderJS(rs) {
   const ff = FONT_FAMILIES[rs?.fontFamily] || FONT_FAMILIES.serif;
   const fs = rs?.fontSize || 18;
   const bg = rs?.bgColor || '#1a1a1a';
   const tc = rs?.textColor || '#e0e0e0';
-  return `(function(){
+  const cacheKey = `${rs?.fontFamily}:${fs}:${bg}:${tc}`;
+  if (_readerJSCache.has(cacheKey)) return _readerJSCache.get(cacheKey);
+  const script = `(function(){
   if(window.__flipReaderActive) return;
   window.__flipReaderActive=true;
   window.__flipOrigHTML=document.documentElement.outerHTML;
@@ -108,17 +112,19 @@ function buildReaderJS(rs) {
   \`;
   document.head.appendChild(s);
 })();`;
+  _readerJSCache.set(cacheKey, script);
+  return script;
 }
 
-function buildReaderExitJS() {
-  return `(function(){
+// Static constant — this string never changes at runtime
+const READER_EXIT_JS = `(function(){
   if(!window.__flipReaderActive||!window.__flipOrigHTML) return;
   window.__flipReaderActive=false;
   document.documentElement.innerHTML=window.__flipOrigHTML;
   /* Re-run page scripts won't work after innerHTML replace, so just reload */
   location.reload();
 })();`;
-}
+function buildReaderExitJS() { return READER_EXIT_JS; }
 
 const isPrivateWindow = new URLSearchParams(window.location.search).get('private') === '1';
 

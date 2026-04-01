@@ -60,9 +60,11 @@ export const createTabsSlice = (set, get) => ({
           nextTabId: state.nextTabId + 1,
         };
       }
+      const nextIdx = tabs.findIndex((t) => t.id > id);
+      const newActiveIdx = nextIdx === -1 ? tabs.length - 1 : nextIdx;
       const newActiveId =
         state.activeTabId === id
-          ? tabs[Math.min(tabs.findIndex((t) => t.id > id), tabs.length - 1) === -1 ? tabs.length - 1 : Math.min(tabs.findIndex((t) => t.id > id), tabs.length - 1)].id
+          ? tabs[newActiveIdx].id
           : state.activeTabId;
       return { tabs, activeTabId: newActiveId };
     }),

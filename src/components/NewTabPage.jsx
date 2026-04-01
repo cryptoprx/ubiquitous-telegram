@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import {
   Search, Clock, Bookmark, Globe, Shield, Zap,
   ArrowRight, Sparkles, X, Newspaper, ExternalLink, RefreshCw,
@@ -8,69 +8,9 @@ import useBrowserStore from '../store/browserStore';
 import { t } from '../i18n';
 import FlipLogo from './FlipLogo';
 import flipLogoUrl from '../assets/fliplogo.png';
+import { getDailyQuote } from '../data/quotes';
 
-const DAILY_QUOTES = [
-  'The only way to do great work is to love what you do.',
-  'Believe you can and you\'re halfway there.',
-  'It does not matter how slowly you go as long as you do not stop.',
-  'Everything you\'ve ever wanted is on the other side of fear.',
-  'Success is not final, failure is not fatal: it is the courage to continue that counts.',
-  'The future belongs to those who believe in the beauty of their dreams.',
-  'What you get by achieving your goals is not as important as what you become by achieving your goals.',
-  'The best time to plant a tree was 20 years ago. The second best time is now.',
-  'Your limitation—it\'s only your imagination.',
-  'Push yourself, because no one else is going to do it for you.',
-  'Great things never come from comfort zones.',
-  'Dream it. Wish it. Do it.',
-  'Success doesn\'t just find you. You have to go out and get it.',
-  'The harder you work for something, the greater you\'ll feel when you achieve it.',
-  'Don\'t stop when you\'re tired. Stop when you\'re done.',
-  'Wake up with determination. Go to bed with satisfaction.',
-  'Do something today that your future self will thank you for.',
-  'Little things make big days.',
-  'It\'s going to be hard, but hard does not mean impossible.',
-  'Don\'t wait for opportunity. Create it.',
-  'Sometimes we\'re tested not to show our weaknesses, but to discover our strengths.',
-  'The key to success is to focus on goals, not obstacles.',
-  'Dream bigger. Do bigger.',
-  'Don\'t be afraid to give up the good to go for the great.',
-  'The secret of getting ahead is getting started.',
-  'It always seems impossible until it\'s done.',
-  'What lies behind us and what lies before us are tiny matters compared to what lies within us.',
-  'Hardships often prepare ordinary people for an extraordinary destiny.',
-  'If you want to achieve greatness stop asking for permission.',
-  'Things work out best for those who make the best of how things work out.',
-  'To live a creative life, we must lose our fear of being wrong.',
-  'If you are not willing to risk the usual, you will have to settle for the ordinary.',
-  'All our dreams can come true if we have the courage to pursue them.',
-  'Good things come to people who wait, but better things come to those who go out and get them.',
-  'If you do what you always did, you will get what you always got.',
-  'Happiness is not something readymade. It comes from your own actions.',
-  'The ones who are crazy enough to think they can change the world are the ones that do.',
-  'Failure is the condiment that gives success its flavor.',
-  'We may encounter many defeats but we must not be defeated.',
-  'Knowing is not enough; we must apply. Wishing is not enough; we must do.',
-  'Imagine your life is perfect in every respect; what would it look like?',
-  'We generate fears while we sit. We overcome them by action.',
-  'Whether you think you can or think you can\'t, you\'re right.',
-  'Security is mostly a superstition. Life is either a daring adventure or nothing.',
-  'The man who has confidence in himself gains the confidence of others.',
-  'The only limit to our realization of tomorrow will be our doubts of today.',
-  'Creativity is intelligence having fun.',
-  'What you do speaks so loudly that I cannot hear what you say.',
-  'The most difficult thing is the decision to act, the rest is merely tenacity.',
-  'An unexamined life is not worth living.',
-  'Everything has beauty, but not everyone sees it.',
-  'Turn your wounds into wisdom.',
-  'Change your thoughts and you change your world.',
-  'If you want to lift yourself up, lift up someone else.',
-  'A person who never made a mistake never tried anything new.',
-  'How wonderful it is that nobody need wait a single moment before starting to improve the world.',
-  'When you reach the end of your rope, tie a knot in it and hang on.',
-  'There is nothing impossible to they who will try.',
-  'The only impossible journey is the one you never begin.',
-  'With the new day comes new strength and new thoughts.',
-];
+
 
 const QUICK_LINKS = [
   { name: 'Flip', url: 'https://flip.croak.work', icon: flipLogoUrl },
@@ -115,7 +55,8 @@ export default function NewTabPage({ isSplit = false }) {
   const [whatsNew, setWhatsNew] = useState(null);
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
-  const [dailyQuote, setDailyQuote] = useState('');
+  // Quote computed once at module load — no state needed
+  const dailyQuote = useMemo(() => getDailyQuote(), []);
   const [showCelebration, setShowCelebration] = useState(false);
 
   function fetchNews() {
@@ -150,7 +91,18 @@ export default function NewTabPage({ isSplit = false }) {
 
   useEffect(() => {
     inputRef.current?.focus();
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    // Update clock only when the displayed HH:MM value changes (once per minute)
+    // Align to the next minute boundary to avoid cumulative drift
+    let timer;
+    function tick() {
+      setCurrentTime(new Date());
+      const next = new Date();
+      const msToNextMinute = 60000 - (next.getSeconds() * 1000 + next.getMilliseconds());
+      timer = setTimeout(tick, msToNextMinute);
+    }
+    const now = new Date();
+    const msToNextMinute = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+    timer = setTimeout(tick, msToNextMinute);
     requestAnimationFrame(() => setMounted(true));
 
     // Check for "What's new" after update
@@ -165,11 +117,7 @@ export default function NewTabPage({ isSplit = false }) {
     // Fetch world news
     fetchNews();
 
-    // Daily motivational quote — pick one based on day of year
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    setDailyQuote(DAILY_QUOTES[dayOfYear % DAILY_QUOTES.length]);
-
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   function handleSearch(e) {
@@ -201,7 +149,8 @@ export default function NewTabPage({ isSplit = false }) {
   const greeting = getGreeting(hours, lang);
 
   const recentHistory = history.slice(0, 2);
-  const tabCount = useBrowserStore.getState().tabs.length;
+  // Use selector subscription so it updates reactively when tabs change
+  const tabCount = useBrowserStore((state) => state.tabs.length);
 
   // Stagger helper
   const s = (i) => ({
@@ -337,7 +286,8 @@ export default function NewTabPage({ isSplit = false }) {
                     <img
                       src={item.thumb}
                       alt=""
-                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
+                      className="w-16 rounded-lg object-cover flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
+                      style={{ width: 64, height: 64, aspectRatio: '1 / 1' }}
                       loading="lazy"
                       onError={(e) => { e.target.style.display = 'none'; }}
                     />

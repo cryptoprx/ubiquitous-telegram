@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   ArrowLeft, ArrowRight, RotateCw, Star,
   Shield, ShieldCheck, Lock, Unlock, PanelLeft, Search,
@@ -15,6 +15,12 @@ import FlipLogo from './FlipLogo';
 const isPrivate = new URLSearchParams(window.location.search).get('private') === '1';
 const isMac = navigator.userAgent.includes('Mac');
 
+/** Convert internal/newtab URL to the display value for the address bar. */
+function getDisplayUrl(url) {
+  if (!url || url === 'flip://newtab') return '';
+  return url;
+}
+
 export default function AddressBar() {
   const {
     tabs, activeTabId, sidebarOpen, blockedCount, settings, readingMode,
@@ -27,7 +33,7 @@ export default function AddressBar() {
     (e) => e.enabled && e.manifest?.toolbar_action
   );
 
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId), [tabs, activeTabId]);
   const lang = settings.language || 'en';
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -70,7 +76,7 @@ export default function AddressBar() {
 
   useEffect(() => {
     if (!isFocused && activeTab) {
-      setInputValue(activeTab.url === 'flip://newtab' ? '' : activeTab.url === 'flip://devtools' ? 'flip://devtools' : activeTab.url === 'flip://marketplace' ? 'flip://marketplace' : activeTab.url?.startsWith('flip://ext/') ? activeTab.url : activeTab.url || '');
+      setInputValue(getDisplayUrl(activeTab.url));
     }
   }, [activeTab?.url, isFocused]);
 
@@ -630,7 +636,7 @@ export default function AddressBar() {
   );
 }
 
-function NavButton({ children, onClick, disabled, title }) {
+const NavButton = memo(function NavButton({ children, onClick, disabled, title }) {
   return (
     <button
       onClick={onClick}
@@ -646,7 +652,7 @@ function NavButton({ children, onClick, disabled, title }) {
       {children}
     </button>
   );
-}
+});
 
 function ShieldButton({ blockedCount, activeTab, isInternal, lang }) {
   const [open, setOpen] = useState(false);
@@ -758,7 +764,7 @@ function ShieldButton({ blockedCount, activeTab, isInternal, lang }) {
   );
 }
 
-function OverflowItem({ icon: Icon, label, onClick, disabled }) {
+const OverflowItem = memo(function OverflowItem({ icon: Icon, label, onClick, disabled }) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -774,4 +780,4 @@ function OverflowItem({ icon: Icon, label, onClick, disabled }) {
       <span className="text-[12px] font-medium">{label}</span>
     </button>
   );
-}
+});

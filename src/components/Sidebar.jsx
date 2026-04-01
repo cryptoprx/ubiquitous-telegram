@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Globe, Plus, X, Pin, Copy, Layers, Pause,
@@ -11,23 +11,36 @@ import clsx from 'clsx';
 import useBrowserStore from '../store/browserStore';
 import { t } from '../i18n';
 import AiTabAssistant from './AiTabAssistant';
+
+// ── Eagerly loaded (lightweight / always visible) ──────────────────────────
 import FlipTabsView from './sidebar/FlipTabsView';
-import BookmarksView from './sidebar/BookmarksView';
-import HistoryView from './sidebar/HistoryView';
-import DownloadsView from './sidebar/DownloadsView';
-import PasswordsView from './sidebar/PasswordsView';
-import WalletView from './sidebar/WalletView';
-import CryptoView from './sidebar/CryptoView';
-import VpnView from './sidebar/VpnView';
-import AutofillView from './sidebar/AutofillView';
-import NotificationsView from './sidebar/NotificationsView';
-import PerformanceView from './sidebar/PerformanceView';
-import ShortcutsView from './sidebar/ShortcutsView';
-import ProfilesView from './sidebar/ProfilesView';
-import ReaderSettingsView from './sidebar/ReaderSettingsView';
-import SiteSettingsView from './sidebar/SiteSettingsView';
-import SettingsView from './sidebar/SettingsView';
 import CtxItem from './sidebar/CtxItem';
+
+// ── Lazy loaded panels (heavy, only open on demand) ───────────────────────
+const BookmarksView = lazy(() => import('./sidebar/BookmarksView'));
+const HistoryView = lazy(() => import('./sidebar/HistoryView'));
+const DownloadsView = lazy(() => import('./sidebar/DownloadsView'));
+const PasswordsView = lazy(() => import('./sidebar/PasswordsView'));
+const WalletView = lazy(() => import('./sidebar/WalletView'));
+const CryptoView = lazy(() => import('./sidebar/CryptoView'));
+const VpnView = lazy(() => import('./sidebar/VpnView'));
+const AutofillView = lazy(() => import('./sidebar/AutofillView'));
+const NotificationsView = lazy(() => import('./sidebar/NotificationsView'));
+const PerformanceView = lazy(() => import('./sidebar/PerformanceView'));
+const ShortcutsView = lazy(() => import('./sidebar/ShortcutsView'));
+const ProfilesView = lazy(() => import('./sidebar/ProfilesView'));
+const ReaderSettingsView = lazy(() => import('./sidebar/ReaderSettingsView'));
+const SiteSettingsView = lazy(() => import('./sidebar/SiteSettingsView'));
+const SettingsView = lazy(() => import('./sidebar/SettingsView'));
+
+/** Minimal skeleton shown while a lazy panel loads */
+function PanelSkeleton() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-5 h-5 border-2 border-flip-500/40 border-t-flip-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 
 // The rail is always visible (48px). Panels float over content.
 const RAIL_WIDTH = 54;
@@ -312,35 +325,37 @@ export default function Sidebar() {
           })()}
 
           {/* Panel content */}
-          {activePanel === 'tabs' && (
-            <FlipTabsView
-              tabs={tabs}
-              pinnedTabs={pinnedTabs}
-              activeTabId={activeTabId}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              setActiveTab={(id) => { setActiveTab(id); }}
-              closeTab={closeTab}
-              addTab={addTab}
-              handleTabContext={handleTabContext}
-            />
-          )}
-          {activePanel === 'bookmarks' && <BookmarksView />}
-          {activePanel === 'history' && <HistoryView />}
-          {activePanel === 'downloads' && <DownloadsView />}
-          {activePanel === 'passwords' && <PasswordsView />}
-          {activePanel === 'wallet' && <WalletView />}
-          {activePanel === 'crypto' && <CryptoView />}
-          {activePanel === 'vpn' && <VpnView />}
-          {activePanel === 'autofill' && <AutofillView />}
-          {activePanel === 'notifications' && <NotificationsView />}
-          {activePanel === 'performance' && <PerformanceView />}
-          {activePanel === 'shortcuts' && <ShortcutsView />}
-          {activePanel === 'profiles' && <ProfilesView />}
-          {activePanel === 'reader' && <ReaderSettingsView />}
-          {activePanel === 'siteSettings' && <SiteSettingsView />}
-          {activePanel === 'aiChat' && <AiTabAssistant onClose={closePanel} />}
-          {activePanel === 'settings' && <SettingsView />}
+          <Suspense fallback={<PanelSkeleton />}>
+            {activePanel === 'tabs' && (
+              <FlipTabsView
+                tabs={tabs}
+                pinnedTabs={pinnedTabs}
+                activeTabId={activeTabId}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                setActiveTab={(id) => { setActiveTab(id); }}
+                closeTab={closeTab}
+                addTab={addTab}
+                handleTabContext={handleTabContext}
+              />
+            )}
+            {activePanel === 'bookmarks' && <BookmarksView />}
+            {activePanel === 'history' && <HistoryView />}
+            {activePanel === 'downloads' && <DownloadsView />}
+            {activePanel === 'passwords' && <PasswordsView />}
+            {activePanel === 'wallet' && <WalletView />}
+            {activePanel === 'crypto' && <CryptoView />}
+            {activePanel === 'vpn' && <VpnView />}
+            {activePanel === 'autofill' && <AutofillView />}
+            {activePanel === 'notifications' && <NotificationsView />}
+            {activePanel === 'performance' && <PerformanceView />}
+            {activePanel === 'shortcuts' && <ShortcutsView />}
+            {activePanel === 'profiles' && <ProfilesView />}
+            {activePanel === 'reader' && <ReaderSettingsView />}
+            {activePanel === 'siteSettings' && <SiteSettingsView />}
+            {activePanel === 'aiChat' && <AiTabAssistant onClose={closePanel} />}
+            {activePanel === 'settings' && <SettingsView />}
+          </Suspense>
         </div>
       )}
 

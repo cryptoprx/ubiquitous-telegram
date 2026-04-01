@@ -191,7 +191,7 @@
   }
 
   .glass-hover {
-    @apply hover:bg-white/[0.07] transition-colors duration-200;
+    @apply hover:bg-white/[0.07] transition-all duration-200;
   }
 
   .btn-ghost {
@@ -231,6 +231,7 @@
     background: linear-gradient(90deg, rgb(var(--flip-500)), rgb(var(--accent-400)), rgb(var(--flip-500)));
     background-size: 200% 100%;
     animation: shimmerBar 1.5s ease-in-out infinite;
+    will-change: background-position;
   }
 
   .flip-gradient-text {
@@ -307,6 +308,7 @@
 /* Flip logo spin on hover */
 .flip-logo {
   transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
 }
 .flip-logo:hover {
   transform: rotateY(180deg);
@@ -317,6 +319,7 @@
   background: rgba(30, 30, 30, 0.88);
   backdrop-filter: blur(40px) saturate(1.6);
   -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  will-change: opacity, transform;
 }
 
 /* macOS-style toggle switch */
@@ -331,6 +334,7 @@
   @apply absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white shadow-sm;
   left: 2px;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
 }
 .macos-toggle.active .macos-toggle-knob {
   transform: translateX(14px);
