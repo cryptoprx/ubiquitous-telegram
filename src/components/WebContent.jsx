@@ -1239,6 +1239,7 @@ export default function WebContent({ tabId: overrideTabId }) {
                 partition={isPrivateWindow ? "memory" : "persist:default"}
                 style={{ flex: 1, width: '100%', height: '100%' }}
                 allowpopups="true"
+                allow="publickey-credentials-get *; publickey-credentials-create *; geolocation *; microphone *; camera *; clipboard-read *; clipboard-write *"
                 webpreferences="contextIsolation=yes, spellcheck=yes"
               />
             )}

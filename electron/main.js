@@ -416,7 +416,7 @@ function createWindow() {
         return true;
       }
       // Always allow safe permissions
-      const safePerms = ['clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock', 'hid'];
+      const safePerms = ['clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock', 'hid', 'webauthn', 'security-key'];
       if (safePerms.includes(permission)) return true;
       // Auto-allow for file:// and empty origins (app content)
       if (!requestingOrigin || requestingOrigin === 'null' || requestingOrigin.startsWith('file://')) return true;
@@ -438,7 +438,7 @@ function createWindow() {
         return callback(true);
       }
       // Auto-allow safe permissions
-      const silentAllow = ['clipboard-read', 'clipboard-sanitized-write'];
+      const silentAllow = ['clipboard-read', 'clipboard-sanitized-write', 'webauthn', 'security-key', 'hid'];
       if (silentAllow.includes(permission)) return callback(true);
       // Auto-allow file:// origins (app content)
       let url;
