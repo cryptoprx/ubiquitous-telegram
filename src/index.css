@@ -352,7 +352,7 @@
 
 /* macOS-style vibrancy material for floating panels */
 .vibrancy {
-  background: rgba(var(--surface-1), 0.88);
+  background: rgb(var(--surface-1) / 0.88);
   backdrop-filter: blur(24px) saturate(190%) contrast(110%);
   -webkit-backdrop-filter: blur(24px) saturate(190%) contrast(110%);
   will-change: opacity, transform;
