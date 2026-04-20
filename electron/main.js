@@ -375,6 +375,31 @@ function createWindow() {
     mainWindow = null;
   });
 
+  // Secure WebContents logic: enforce webview containment
+  app.on('web-contents-created', (event, contents) => {
+    contents.on('will-attach-webview', (event, webPreferences, params) => {
+      // Strip away preload scripts
+      delete webPreferences.preload;
+      delete webPreferences.preloadURL;
+
+      // Disable Node.js integration to prevent RCE
+      webPreferences.nodeIntegration = false;
+      webPreferences.nodeIntegrationInWorker = false;
+      webPreferences.nodeIntegrationInSubFrames = false;
+
+      // Force context isolation and sandbox
+      webPreferences.contextIsolation = true;
+      webPreferences.sandbox = true;
+
+      // Verify URL scheme is safe
+      const url = params.src;
+      if (url && url.startsWith('file://')) {
+        event.preventDefault();
+        console.warn(`[Security] Blocked attempt to attach webview with internal file:// URL: ${url}`);
+      }
+    });
+  });
+
   // Set up ad/tracker blocking
   setupAdBlocker();
 
@@ -384,62 +409,78 @@ function createWindow() {
   const pendingPermCallbacks = {};
   let permIdCounter = 0;
 
-  // Permission check handler — Electron 28+ calls this for synchronous permission checks.
-  // Must return true so setPermissionRequestHandler fires for media permissions.
-  session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
-    // Silenced verbose log — uncomment for debugging:
-    // console.log('[PermCheck]', permission, 'origin:', requestingOrigin, 'wcId:', webContents?.id, 'mainId:', mainWindow?.webContents?.id);
-    // If request comes from the main window (where extension iframes live), always allow
-    if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
-      // console.log('[PermCheck] ALLOW — main window webContents');
+  function secureSession(ses) {
+    ses.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+      // If request comes from the main window (where extension iframes live), always allow
+      if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
+        return true;
+      }
+      // Always allow safe permissions
+      const safePerms = ['clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock', 'hid'];
+      if (safePerms.includes(permission)) return true;
+      // Auto-allow for file:// and empty origins (app content)
+      if (!requestingOrigin || requestingOrigin === 'null' || requestingOrigin.startsWith('file://')) return true;
+      // For web pages: check stored decisions
+      const perms = encryptedRead(notifFile, {});
+      let origin;
+      try { origin = new URL(requestingOrigin).hostname; } catch { return true; }
+      if (!origin) return true;
+      const key = `${origin}:${permission}`;
+      if (perms[key] !== undefined) return perms[key];
       return true;
-    }
-    // Always allow safe permissions
-    const safePerms = ['clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock', 'hid'];
-    if (safePerms.includes(permission)) return true;
-    // Auto-allow for file:// and empty origins (app content)
-    if (!requestingOrigin || requestingOrigin === 'null' || requestingOrigin.startsWith('file://')) return true;
-    // For web pages: check stored decisions
-    const perms = encryptedRead(notifFile, {});
-    let origin;
-    try { origin = new URL(requestingOrigin).hostname; } catch { return true; }
-    if (!origin) return true;
-    const key = `${origin}:${permission}`;
-    if (perms[key] !== undefined) return perms[key];
-    return true;
-  });
+    });
 
-  // Device permission handler — persist device-level grants (camera/mic hardware)
-  session.defaultSession.setDevicePermissionHandler((details) => true);
+    ses.setDevicePermissionHandler((details) => true);
 
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    // console.log('[PermReq]', permission, 'url:', webContents?.getURL()?.slice(0, 60), 'wcId:', webContents?.id, 'mainId:', mainWindow?.webContents?.id);
-    // If request comes from the main window (extension iframes), auto-allow
-    if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
-      console.log('[PermReq] ALLOW — main window webContents');
-      return callback(true);
-    }
-    // Auto-allow safe permissions
-    const silentAllow = ['clipboard-read', 'clipboard-sanitized-write'];
-    if (silentAllow.includes(permission)) return callback(true);
-    // Auto-allow file:// origins (app content)
-    let url;
-    try { url = new URL(webContents.getURL()); } catch { return callback(true); }
-    if (!url.hostname || url.protocol === 'file:') return callback(true);
-    // For web pages: check stored permissions
-    const origin = url.hostname;
-    const perms = encryptedRead(notifFile, {});
-    const key = `${origin}:${permission}`;
-    if (perms[key] !== undefined) return callback(perms[key]);
-    // Prompt the user via the renderer
-    const id = ++permIdCounter;
-    pendingPermCallbacks[id] = (allowed) => {
-      const current = encryptedRead(notifFile, {});
-      current[key] = allowed;
-      encryptedWrite(notifFile, current);
-      callback(allowed);
-    };
-    mainWindow.webContents.send('permission-request', { id, origin, permission });
+    ses.setPermissionRequestHandler((webContents, permission, callback) => {
+      if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
+        console.log('[PermReq] ALLOW — main window webContents');
+        return callback(true);
+      }
+      // Auto-allow safe permissions
+      const silentAllow = ['clipboard-read', 'clipboard-sanitized-write'];
+      if (silentAllow.includes(permission)) return callback(true);
+      // Auto-allow file:// origins (app content)
+      let url;
+      try { url = new URL(webContents.getURL()); } catch { return callback(true); }
+      if (!url.hostname || url.protocol === 'file:') return callback(true);
+      // For web pages: check stored permissions
+      const origin = url.hostname;
+      const perms = encryptedRead(notifFile, {});
+      const key = `${origin}:${permission}`;
+      if (perms[key] !== undefined) return callback(perms[key]);
+      // Prompt the user via the renderer
+      const id = ++permIdCounter;
+      pendingPermCallbacks[id] = (allowed) => {
+        const current = encryptedRead(notifFile, {});
+        current[key] = allowed;
+        encryptedWrite(notifFile, current);
+        callback(allowed);
+      };
+      mainWindow.webContents.send('permission-request', { id, origin, permission });
+    });
+
+    // WebAuthn / Passkeys support
+    ses.on('select-hid-device', (event, details, callback) => {
+      event.preventDefault();
+      // Auto-select the first available device
+      if (details.deviceList && details.deviceList.length > 0) {
+        callback(details.deviceList[0].deviceId);
+      } else {
+        callback('');
+      }
+    });
+
+    ses.on('hid-device-added', () => {});
+    ses.on('hid-device-removed', () => {});
+  }
+
+  // Apply to the default session immediately
+  secureSession(session.defaultSession);
+
+  // Apply to all future partitioned sessions (e.g., Private Tabs)
+  app.on('session-created', (ses) => {
+    secureSession(ses);
   });
 
   ipcMain.handle('respond-permission', (_, id, allowed) => {
@@ -450,20 +491,6 @@ function createWindow() {
     }
     return true;
   });
-
-  // WebAuthn / Passkeys support — allow platform authenticator and HID security keys
-  session.defaultSession.on('select-hid-device', (event, details, callback) => {
-    event.preventDefault();
-    // Auto-select the first available device (typically the platform authenticator or a USB key)
-    if (details.deviceList && details.deviceList.length > 0) {
-      callback(details.deviceList[0].deviceId);
-    } else {
-      callback('');
-    }
-  });
-
-  session.defaultSession.on('hid-device-added', () => {});
-  session.defaultSession.on('hid-device-removed', () => {});
 
   // Certificate error handler — reject bad certs and notify renderer to show interstitial
   mainWindow.webContents.on('did-attach-webview', (_, webviewContents) => {

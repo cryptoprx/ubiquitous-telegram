@@ -1,4 +1,16 @@
 {
+  "1.2.118": [
+    "Fixed AI Summarize — removed broken config guard that was blocking the feature"
+  ],
+  "1.2.117": [
+    "Fixed AI Summarize — removed broken config guard that was blocking the feature"
+  ],
+  "1.2.116": [
+    "Fixed AI Summarize — removed broken config guard that was blocking the feature"
+  ],
+  "1.2.115": [
+    "Fixed AI Summarize — removed broken config guard that was blocking the feature"
+  ],
   "1.2.114": [
     "Fixed AI Summarize — removed broken config guard that was blocking the feature"
   ],

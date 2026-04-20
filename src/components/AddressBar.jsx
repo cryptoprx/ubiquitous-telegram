@@ -95,6 +95,21 @@ export default function AddressBar() {
     return () => clearTimeout(t);
   }, [localInput]);
 
+  // Intelligent Omnibox Filtering
+  const autocompleteResults = useMemo(() => {
+    if (!localInput || localInput.startsWith('@ai') || localInput.startsWith('?')) return null;
+    const q = localInput.toLowerCase();
+    const matchingTabs = tabs
+      .filter(t => t.id !== activeTabId && (t.title?.toLowerCase().includes(q) || t.url.toLowerCase().includes(q)))
+      .slice(0, 2);
+    const matchingBookmarks = bookmarks
+      .filter(b => b.title?.toLowerCase().includes(q) || b.url.toLowerCase().includes(q))
+      .slice(0, 5);
+    
+    if (matchingTabs.length === 0 && matchingBookmarks.length === 0) return null;
+    return { tabs: matchingTabs, bookmarks: matchingBookmarks };
+  }, [localInput, tabs, bookmarks, activeTabId]);
+
   // AI query handler
   const sendAiQuery = useCallback(async (prompt) => {
     setAiOpen(true);
@@ -196,8 +211,13 @@ export default function AddressBar() {
 
     // Determine if input is a URL or search query
     if (!/^https?:\/\//i.test(url) && !/^[a-z]+:\/\//i.test(url)) {
-      if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(url) || url.includes('.') && !url.includes(' ')) {
-        url = 'https://' + url;
+      const isLocalhost = url.startsWith('localhost') || /^127\.\d+\.\d+\.\d+/.test(url);
+      const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url);
+      const hasDomain = /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(url) || (url.includes('.') && !url.includes(' '));
+      const hasPort = /:\d{2,5}$/.test(url);
+      
+      if (isLocalhost || isIP || hasDomain || hasPort) {
+        url = (url.startsWith('localhost') ? 'http://' : 'https://') + url;
       } else {
         url = settings.searchEngine + encodeURIComponent(url);
       }
@@ -364,6 +384,68 @@ export default function AddressBar() {
         {activeTab?.loading && (
           <div className="absolute left-0 right-0 bottom-0 h-[2px] overflow-hidden">
             <div className="loading-bar" />
+          </div>
+        )}
+
+        {/* Intelligent Omnibox Dropdown */}
+        {isFocused && autocompleteResults && (
+          <div className="absolute top-full left-14 right-16 mt-1 rounded-xl vibrancy border border-white/10 shadow-2xl z-[200] overflow-hidden animate-fade-in">
+            {autocompleteResults.tabs.length > 0 && (
+              <div className="py-1">
+                <div className="px-3 py-1 text-[10px] font-semibold text-accent-400 uppercase tracking-wider bg-white/[0.02]">Switch to Tab</div>
+                {autocompleteResults.tabs.map(t => (
+                  <button
+                    key={'tab-'+t.id}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      useBrowserStore.getState().setActiveTab(t.id);
+                      setIsFocused(false);
+                      inputRef.current?.blur();
+                    }}
+                    className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-white/[0.08] transition-colors"
+                  >
+                    <div className="w-4 flex flex-shrink-0 justify-center">
+                      {t.favicon ? <img src={t.favicon} className="w-3.5 h-3.5 rounded-sm" /> : <BookOpen size={13} className="text-white/40" />}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="text-xs text-white/90 truncate">{t.title}</span>
+                      <span className="text-[10px] text-accent-400/60 truncate">{t.url}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {autocompleteResults.bookmarks.length > 0 && (
+              <div className="py-1 border-t border-white/5">
+                <div className="px-3 py-1 text-[10px] font-semibold text-flip-400 uppercase tracking-wider bg-white/[0.02]">Bookmarks</div>
+                {autocompleteResults.bookmarks.map(b => (
+                  <button
+                    key={'bm-'+b.id}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setLocalInput(b.url);
+                      setInputValue(b.url);
+                      updateTab(activeTabId, { url: b.url, loading: true });
+                      window.dispatchEvent(new CustomEvent('flip-navigate', { detail: { tabId: activeTabId, url: b.url } }));
+                      setIsFocused(false);
+                      inputRef.current?.blur();
+                    }}
+                    className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-white/[0.08] transition-colors"
+                  >
+                    <div className="w-4 flex flex-shrink-0 justify-center">
+                      <Star size={13} className="text-flip-400/80" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="text-xs text-white/90 truncate">{b.title}</span>
+                      <span className="text-[10px] text-white/40 truncate">{b.url}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </form>
