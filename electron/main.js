@@ -400,8 +400,7 @@ function createWindow() {
     });
   });
 
-  // Set up ad/tracker blocking
-  setupAdBlocker();
+  // Set up ad/tracker blocking (handled inside secureSession)
 
   // HTTPS-only mode is now handled inside setupAdBlocker() to avoid overwriting the onBeforeRequest listener
 
@@ -410,6 +409,7 @@ function createWindow() {
   let permIdCounter = 0;
 
   function secureSession(ses) {
+    setupAdBlocker(ses);
     ses.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
       // If request comes from the main window (where extension iframes live), always allow
       if (mainWindow && !mainWindow.isDestroyed() && webContents && webContents.id === mainWindow.webContents.id) {
@@ -562,8 +562,8 @@ function createWindow() {
   // CSP is now handled inside setupAdBlocker() to avoid overwriting the onHeadersReceived listener
 }
 
-function setupAdBlocker() {
-  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+function setupAdBlocker(ses = session.defaultSession) {
+  ses.webRequest.onBeforeRequest((details, callback) => {
     // Skip internal requests
     if (details.url.startsWith('devtools://') || details.url.includes('localhost')) {
       return callback({});
@@ -661,7 +661,7 @@ function setupAdBlocker() {
   });
 
   // Strip tracking headers and known tracking query params + inject proxy auth
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = { ...details.requestHeaders };
 
     // Inject proxy authentication if configured
@@ -692,7 +692,7 @@ function setupAdBlocker() {
   });
 
   // Combined onHeadersReceived: CSP + tracking header stripping
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  ses.webRequest.onHeadersReceived((details, callback) => {
     let headers = { ...details.responseHeaders };
 
     // Production CSP for local file:// pages (renderer)
