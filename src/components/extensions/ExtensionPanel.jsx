@@ -1,57 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Puzzle, Grid3X3, ChevronDown, ExternalLink, X, CloudSun, StickyNote, MessageCircle, MessageSquare, Hammer, Music, Braces, Palette, FileSearch, Bot, Store,
-  KeyRound, ShieldCheck, Newspaper, Wallet, Calendar, QrCode, Calculator, Ruler, Clock, Wifi,
-  Phone, Image as ImageIcon, Pencil, ArrowLeftRight, Smile, Camera, Gauge, Video,
-  EyeOff, ShieldAlert, Film, Share2, Trash2, Shield,
-} from 'lucide-react';
+import { Puzzle, Grid3X3, Store } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
 import ExtensionManager from './ExtensionManager';
 import ExtensionHost from './ExtensionHost';
+import { EXT_ICONS } from '../../lib/extIcons';
 
-const EXT_ICONS = {
-  'ai-chat': { type: 'lucide', icon: Bot, color: 'text-orange-400' },
-  'music-player': { type: 'lucide', icon: Music, color: 'text-pink-400' },
-  'sample-notes': { type: 'lucide', icon: StickyNote, color: 'text-amber-400' },
-  'sample-weather': { type: 'lucide', icon: CloudSun, color: 'text-sky-400' },
-  'json-formatter': { type: 'lucide', icon: Braces, color: 'text-emerald-400' },
-  'color-picker': { type: 'lucide', icon: Palette, color: 'text-violet-400' },
-  'regex-tester': { type: 'lucide', icon: FileSearch, color: 'text-cyan-400' },
-  'flipprx-miner': { type: 'lucide', icon: Hammer, color: 'text-orange-400' },
-  'mimo-messenger': { type: 'lucide', icon: MessageSquare, color: 'text-violet-400' },
-  'community-chat': { type: 'lucide', icon: MessageCircle, color: 'text-teal-400' },
-  'password-vault': { type: 'lucide', icon: KeyRound, color: 'text-amber-400' },
-  'totp-auth': { type: 'lucide', icon: ShieldCheck, color: 'text-emerald-400' },
-  'crypto-news': { type: 'lucide', icon: Newspaper, color: 'text-sky-400' },
-  'xrpl-wallet': { type: 'lucide', icon: Wallet, color: 'text-cyan-400' },
-  'calendar-widget': { type: 'lucide', icon: Calendar, color: 'text-blue-400' },
-  'qr-generator': { type: 'lucide', icon: QrCode, color: 'text-white/60' },
-  'calculator': { type: 'lucide', icon: Calculator, color: 'text-teal-400' },
-  'unit-converter': { type: 'lucide', icon: Ruler, color: 'text-indigo-400' },
-  'world-clock': { type: 'lucide', icon: Clock, color: 'text-sky-400' },
-  'ip-lookup': { type: 'lucide', icon: Wifi, color: 'text-green-400' },
-  'flip-call': { type: 'lucide', icon: Phone, color: 'text-emerald-400' },
-  'image-editor': { type: 'lucide', icon: ImageIcon, color: 'text-pink-400' },
-  'drawing-canvas': { type: 'lucide', icon: Pencil, color: 'text-violet-400' },
-  'file-converter': { type: 'lucide', icon: ArrowLeftRight, color: 'text-blue-400' },
-  'meme-generator': { type: 'lucide', icon: Smile, color: 'text-yellow-400' },
-  'screenshot-annotator': { type: 'lucide', icon: Camera, color: 'text-rose-400' },
-  'speed-test': { type: 'lucide', icon: Gauge, color: 'text-green-400' },
-  'video-downloader': { type: 'lucide', icon: Video, color: 'text-red-400' },
-  'privacy-dashboard': { type: 'lucide', icon: EyeOff, color: 'text-purple-400' },
-  'link-checker': { type: 'lucide', icon: ShieldAlert, color: 'text-amber-400' },
-  'flip-share': { type: 'lucide', icon: Share2, color: 'text-cyan-400' },
-  'gif-maker': { type: 'lucide', icon: Film, color: 'text-pink-400' },
-  'file-cleaner': { type: 'lucide', icon: Trash2, color: 'text-red-400' },
-  'security-dashboard': { type: 'lucide', icon: Shield, color: 'text-indigo-400' },
-};
 
 export default function ExtensionPanel() {
   const { extensions, setExtensions } = useBrowserStore();
   const [activeExtId, setActiveExtId] = useState(null);
 
-  // Lazy-load extensions when panel opens, clear when it closes
+  // Lazy-load extensions on mount if store is empty
   useEffect(() => {
     async function loadExts() {
       if (window.flipAPI && extensions.length === 0) {
@@ -60,10 +20,8 @@ export default function ExtensionPanel() {
       }
     }
     loadExts();
-    return () => {
-      // Free memory: clear extensions from store when panel unmounts
-      setExtensions([]);
-    };
+    // NOTE: intentionally no cleanup — clearing extensions from the global store
+    // on unmount would wipe them for every other component that shares the store.
   }, []);
 
   // Listen for toolbar action clicks from AddressBar
@@ -124,11 +82,9 @@ export default function ExtensionPanel() {
               )}
               title={ext.manifest.name || ext.id}
             >
-              {extIcon?.type === 'image'
-                ? <img src={extIcon.src} alt="" className="w-4 h-4 object-contain" />
-                : extIcon?.type === 'lucide'
-                  ? React.createElement(extIcon.icon, { size: 14, className: isActive ? extIcon.color : 'text-white/40' })
-                  : <span className="text-sm text-white/40">{ext.manifest.name?.[0] || '?'}</span>}
+              {extIcon
+                ? React.createElement(extIcon.icon, { size: 14, className: isActive ? extIcon.color : 'text-white/40' })
+                : <span className="text-sm text-white/40">{ext.manifest.name?.[0] || '?'}</span>}
               {isActive && (
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-flip-500" />
               )}

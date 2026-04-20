@@ -53,7 +53,6 @@ export default function UpdateBanner() {
                   <XIcon />
                 </button>
               </div>
-              <ReleaseNotes notes={update.releaseNotes} />
               <div className="flex gap-2">
                 <button
                   onClick={() => setDismissed(true)}
@@ -109,7 +108,6 @@ export default function UpdateBanner() {
                   <XIcon />
                 </button>
               </div>
-              <ReleaseNotes notes={update.releaseNotes} />
               <div className="flex gap-2">
                 <button
                   onClick={() => setDismissed(true)}

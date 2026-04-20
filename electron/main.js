@@ -4,7 +4,6 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const wallet = require('./wallet');
 const adblock = require('./adblock');
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -71,15 +70,19 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.flip.browser');
 }
 
-// Enable DNS-over-HTTPS (Cloudflare)
+// Enable DNS-over-HTTPS (Cloudflare) + WebRTC enhancements
+// IMPORTANT: enable-features must be a SINGLE call — subsequent calls overwrite prior ones
 app.commandLine.appendSwitch('enable-features', 'DnsOverHttps');
 app.commandLine.appendSwitch('force-fieldtrials', 'DnsOverHttps/Enabled');
-app.commandLine.appendSwitch('dns-over-https-mode', 'secure');
+app.commandLine.appendSwitch('dns-over-https-mode', 'automatic');
 app.commandLine.appendSwitch('dns-over-https-templates', 'https://cloudflare-dns.com/dns-query');
 
-// WebRTC enhancements
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
+// WebRTC
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '50');
+
+// GPU stability — prevent renderer crashes on GPU-intensive pages
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('disable-software-rasterizer');
 
 let mainWindow;
 let adBlockEnabled = true;
@@ -321,6 +324,20 @@ function isPathBlocked(url) {
 }
 
 function createWindow() {
+  // Read saved theme to set matching shell bg color on cold start (eliminates flash)
+  const themeBgMap = {
+    ocean: '#0c0e14', purple: '#0e0c14', forest: '#0c100c',
+    rose: '#120e10', mono: '#0e0e0e',
+  };
+  let shellBg = '#101010';
+  try {
+    const settingsPath = path.join(dataDir, 'settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      if (raw?.theme && themeBgMap[raw.theme]) shellBg = themeBgMap[raw.theme];
+    }
+  } catch {}
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -328,7 +345,9 @@ function createWindow() {
     minHeight: 600,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#0c0a09',
+    backgroundColor: shellBg,
+    roundedCorners: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -341,6 +360,9 @@ function createWindow() {
       ? path.join(__dirname, '..', 'public', 'fliplogo.png')
       : path.join(__dirname, '..', 'dist', 'fliplogo.png'),
   });
+
+  // Show window only after content is painted — eliminates startup flash
+  mainWindow.once('ready-to-show', () => mainWindow.show());
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
@@ -455,9 +477,15 @@ function createWindow() {
 
     // Webview crash recovery — notify renderer when a tab's render process dies
     webviewContents.on('render-process-gone', (event, details) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('webview-crashed', { url: webviewContents.getURL(), reason: details?.reason || 'unknown' });
-      }
+      const reason = details?.reason || 'unknown';
+      // clean-exit and killed are intentional teardowns, not crashes
+      if (reason === 'clean-exit' || reason === 'killed') return;
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          const url = webviewContents.getURL() || '';
+          mainWindow.webContents.send('webview-crashed', { url, reason });
+        }
+      } catch {}
     });
 
     // Inject fingerprint protection into all loaded pages
@@ -666,128 +694,9 @@ function setupAdBlocker() {
       }
     }
 
-    if (details.statusCode === 402) {
-      // Parse x402 payment headers (per x402 spec)
-      const paymentHeader =
-        headers['x-payment'] || headers['X-Payment'] ||
-        headers['payment-required'] || headers['Payment-Required'] ||
-        headers['x-payment-required'] || headers['X-Payment-Required'];
-
-      if (paymentHeader) {
-        try {
-          // Parse JSON from header value (may be array with single element)
-          const raw = Array.isArray(paymentHeader) ? paymentHeader[0] : paymentHeader;
-          const paymentReqs = JSON.parse(raw);
-          const req = Array.isArray(paymentReqs) ? paymentReqs[0] : paymentReqs;
-
-          // Build payment request info for the UI
-          const paymentInfo = {
-            id: ++x402PaymentIdCounter,
-            url: details.url,
-            hostname: getHostname(details.url),
-            price: req.maxAmountRequired || req.price || req.amount || '0',
-            asset: req.asset || req.token || 'USDC',
-            network: req.network || `eip155:8453`,
-            payTo: req.payToAddress || req.payTo || req.recipient || '',
-            description: req.description || req.resource || '',
-            scheme: req.scheme || 'exact',
-            extra: req.extra || {},
-            rawRequirement: req,
-          };
-
-          // Notify the renderer to show a payment prompt
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            pendingX402Callbacks[paymentInfo.id] = { paymentInfo, url: details.url };
-            mainWindow.webContents.send('x402-payment-request', paymentInfo);
-          }
-        } catch (e) {
-          console.error('[x402] Failed to parse payment header:', e.message);
-        }
-      }
-    }
-
     callback({ responseHeaders: headers });
   });
 }
-
-let x402PaymentIdCounter = 0;
-const pendingX402Callbacks = {};
-const FLIP_PLATFORM_FEE = 0.02; // 2% platform fee
-const FLIP_TREASURY_ADDRESS = '0x9F894D4d1aFCfcDF45008edBe5D32e75f68601CA';
-
-ipcMain.handle('respond-x402-payment', async (_, id, approved) => {
-  const pending = pendingX402Callbacks[id];
-  if (!pending) return { error: 'No pending payment' };
-  delete pendingX402Callbacks[id];
-
-  if (!approved) return { cancelled: true };
-
-  try {
-    const { paymentInfo, url } = pending;
-
-    // Calculate platform fee (2%) on top of the content price
-    const rawPrice = parseFloat(paymentInfo.price.replace('$', '')) || 0;
-    const feeAmount = +(rawPrice * FLIP_PLATFORM_FEE).toFixed(6);
-    const totalPrice = +(rawPrice + feeAmount).toFixed(6);
-    const testnet = paymentInfo.network?.includes('84532');
-
-    // 1) Sign the content payment to the resource server (original price)
-    const signResult = await wallet.signX402Payment({
-      price: rawPrice.toString(),
-      payTo: paymentInfo.payTo,
-      network: paymentInfo.network,
-    });
-
-    if (signResult.error) return { error: signResult.error };
-
-    // 2) Send the 2% platform fee to the Flip treasury (fire-and-forget)
-    if (feeAmount > 0 && FLIP_TREASURY_ADDRESS) {
-      wallet.sendUsdc(FLIP_TREASURY_ADDRESS, feeAmount.toString(), testnet)
-        .then(r => {
-          if (r?.success) {
-            wallet.addTxRecord({
-              id: Date.now(),
-              type: 'x402-fee',
-              to: FLIP_TREASURY_ADDRESS,
-              amount: feeAmount.toString(),
-              asset: 'USDC',
-              site: paymentInfo.hostname,
-              network: paymentInfo.network,
-              timestamp: Date.now(),
-            });
-          }
-        })
-        .catch(() => {});
-    }
-
-    // Record the content transaction
-    wallet.addTxRecord({
-      id: Date.now(),
-      type: 'x402',
-      to: paymentInfo.payTo,
-      amount: rawPrice.toString(),
-      fee: feeAmount.toString(),
-      total: totalPrice.toString(),
-      asset: paymentInfo.asset || 'USDC',
-      site: paymentInfo.hostname,
-      url: paymentInfo.url,
-      network: paymentInfo.network,
-      timestamp: Date.now(),
-    });
-
-    // Return the signed payment so the renderer can retry with the header
-    return {
-      success: true,
-      url: url,
-      paymentSignature: JSON.stringify(signResult.payload),
-      paymentInfo,
-      fee: feeAmount,
-      total: totalPrice,
-    };
-  } catch (e) {
-    return { error: e.message };
-  }
-});
 
 // IPC Handlers
 
@@ -1975,7 +1884,6 @@ ipcMain.handle('adblock-force-update', () => adblock.forceUpdate());
 
 // Bookmark and history storage
 const dataDir = path.join(app.getPath('userData'), 'flip-data');
-wallet.setDataDir(dataDir);
 adblock.setDataDir(dataDir);
 // Defer adblock initialization until app is ready (net module requires it)
 app.whenReady().then(() => adblock.initialize());
@@ -2253,18 +2161,7 @@ ipcMain.handle('save-passwords', (_, passwords) => {
   return true;
 });
 
-ipcMain.handle('wallet-has', () => wallet.hasWallet());
-ipcMain.handle('wallet-create', () => wallet.createWallet());
-ipcMain.handle('wallet-import', (_, mnemonicOrKey) => wallet.importWallet(mnemonicOrKey));
-ipcMain.handle('wallet-info', () => wallet.getWalletInfo());
-ipcMain.handle('wallet-export-mnemonic', () => wallet.exportMnemonic());
-ipcMain.handle('wallet-delete', () => wallet.deleteWallet());
-ipcMain.handle('wallet-balance', (_, testnet) => wallet.getBalance(testnet));
-ipcMain.handle('wallet-send-usdc', (_, to, amount, testnet) => wallet.sendUsdc(to, amount, testnet));
-ipcMain.handle('wallet-send-eth', (_, to, amount, testnet) => wallet.sendEth(to, amount, testnet));
-ipcMain.handle('wallet-sign-x402', (_, paymentReq) => wallet.signX402Payment(paymentReq));
-ipcMain.handle('wallet-tx-history', () => wallet.getTxHistory());
-ipcMain.handle('wallet-add-tx', (_, entry) => wallet.addTxRecord(entry));
+
 
 const autofillFile = path.join(dataDir, 'autofill.json');
 
@@ -2556,6 +2453,9 @@ ipcMain.handle('save-screenshot', async (_, dataUrl) => {
 // Download tracking
 let downloads = [];
 ipcMain.handle('get-downloads', () => downloads);
+ipcMain.handle('open-download-folder', (_, savePath) => {
+  if (savePath) shell.showItemInFolder(savePath);
+});
 
 // Global error handlers to prevent flash crashes
 process.on('uncaughtException', (err) => {

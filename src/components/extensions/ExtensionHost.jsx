@@ -94,6 +94,24 @@ function sanitizeString(val, maxLen = 2048) {
  * into an iframe with its own React instance. Communication between the
  * extension and the browser happens via postMessage (the Flip Extension API).
  */
+/**
+ * Reads the current resolved theme CSS variables from the browser document
+ * so they can be injected into extension iframes. This ensures extensions
+ * automatically match whatever theme the user has selected.
+ */
+function getThemeTokens() {
+  const s = getComputedStyle(document.documentElement);
+  const r = (v) => s.getPropertyValue(v).trim();
+  return {
+    flip400:  r('--flip-400')  || '255 122 77',
+    flip500:  r('--flip-500')  || '255 98 52',
+    accent400: r('--accent-400') || '45 212 168',
+    surface0: r('--surface-0') || '16 16 16',
+    surface1: r('--surface-1') || '24 24 24',
+    surface2: r('--surface-2') || '32 32 32',
+  };
+}
+
 export default function ExtensionHost({ extension, width = '100%', height = '100%' }) {
   const iframeRef = useRef(null);
   const permissions = extension.manifest.permissions || [];
@@ -202,19 +220,8 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
           getSecurityStatus() { return Flip._postMessage('browser.getSecurityStatus'); },
           executeScript(script) { return Flip._postMessage('browser.executeScript', { script }); },
         },
-
-        x402: {
-          pay(opts) { return Flip._postMessage('x402.pay', opts); },
-          getWalletInfo() { return Flip._postMessage('x402.walletInfo'); },
-          getBalance(testnet) { return Flip._postMessage('x402.balance', { testnet }); },
-          getTxHistory() { return Flip._postMessage('x402.txHistory'); },
-        },
-
-        wallet: {
-          getInfo() { return Flip._postMessage('x402.walletInfo'); },
-          getBalance(testnet) { return Flip._postMessage('x402.balance', { testnet }); },
-        },
       };
+
 
       // srcDoc iframes may not have direct media device access even without sandbox.
       // Polyfill getUserMedia to use the parent window's navigator as fallback.
@@ -271,7 +278,21 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
 
     // Only grant network access if extension declares 'network' permission
     const hasNetwork = permissions.includes('network');
-    const connectSrc = hasNetwork ? 'connect-src https: http: wss: ws:;' : 'connect-src \'none\';';
+    const connectSrc = hasNetwork ? "connect-src https: http: wss: ws:;" : "connect-src 'none';";
+
+    // Resolve the active theme tokens from the browser document at render time.
+    // Values are RGB triplets (e.g. "255 98 52") matching Tailwind's opacity syntax.
+    const tok = getThemeTokens();
+    // Convert to usable CSS color strings
+    const flip    = `rgb(${tok.flip500})`;
+    const flipLt  = `rgb(${tok.flip400})`;
+    const accent  = `rgb(${tok.accent400})`;
+    const bg0     = `rgb(${tok.surface0})`;
+    const bg1     = `rgb(${tok.surface1})`;
+    const bg2     = `rgb(${tok.surface2})`;
+    // RGB triplets for rgba() usage
+    const flipRgb   = tok.flip500;
+    const accentRgb = tok.accent400;
 
     return `<!DOCTYPE html>
 <html>
@@ -280,63 +301,264 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'unsafe-inline'; ${connectSrc} img-src https: http: data:; font-src https: data:; media-src https: http: data: blob:;">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    /* ── Flip Design Tokens (resolved from user's active theme) ── */
+    :root {
+      --flip:        ${flip};
+      --flip-light:  ${flipLt};
+      --accent:      ${accent};
+      --bg:          ${bg0};
+      --bg-1:        ${bg1};
+      --bg-2:        ${bg2};
+      --text:        rgba(255,255,255,0.82);
+      --text-muted:  rgba(255,255,255,0.45);
+      --text-faint:  rgba(255,255,255,0.22);
+      --border:      rgba(255,255,255,0.07);
+      --border-hover:rgba(255,255,255,0.13);
+      --radius-sm:   8px;
+      --radius:      10px;
+      --radius-lg:   14px;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ── Base ── */
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: transparent;
-      color: rgba(255,255,255,0.8);
+      color: var(--text);
       font-size: 13px;
+      line-height: 1.5;
       padding: 12px;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
+
+    /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,122,77,0.2); border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255,122,77,0.35); }
-    button {
-      cursor: pointer;
-      border: none;
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.7);
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      transition: all 0.15s;
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+    /* ── Typography ── */
+    h1, h2, h3, h4 { font-weight: 600; line-height: 1.3; color: rgba(255,255,255,0.9); }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    h2 { font-size: 15px; margin-bottom: 4px; }
+    h3 { font-size: 13px; margin-bottom: 2px; }
+    h4 { font-size: 11px; }
+    p  { color: var(--text-muted); line-height: 1.6; }
+    small { font-size: 10px; color: var(--text-faint); }
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--flip-light);
     }
-    button:hover { background: rgba(255,255,255,0.12); color: white; }
-    input, textarea {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
-      color: white;
-      padding: 6px 10px;
-      font-size: 12px;
-      outline: none;
-      width: 100%;
-    }
-    input:focus, textarea:focus { border-color: rgba(255,98,52,0.5); }
-    h1, h2, h3 { font-weight: 600; }
-    h1 { font-size: 16px; }
-    h2 { font-size: 14px; }
-    h3 { font-size: 12px; }
-    .card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
+    pre {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 12px;
+      overflow-x: auto;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.6);
       margin-bottom: 8px;
     }
-    a { color: rgba(255,122,77,0.8); text-decoration: none; }
-    a:hover { color: rgba(255,122,77,1); }
-    .badge {
-      display: inline-block;
-      background: rgba(255,98,52,0.15);
-      color: rgba(255,98,52,0.9);
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
+    a { color: var(--flip-light); text-decoration: none; }
+    a:hover { color: var(--flip); text-decoration: underline; text-underline-offset: 2px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* ── Buttons ── */
+    button, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.7);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    button:hover, .btn:hover {
+      background: rgba(${flipRgb},0.12);
+      border-color: rgba(${flipRgb},0.25);
+      color: rgba(255,255,255,0.9);
+    }
+    button:active, .btn:active { opacity: 0.8; transform: scale(0.98); }
+    button:disabled, .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+    .btn-primary {
+      background: rgba(${flipRgb},0.18);
+      border-color: rgba(${flipRgb},0.30);
+      color: var(--flip-light);
+      font-weight: 600;
+    }
+    .btn-primary:hover {
+      background: rgba(${flipRgb},0.28);
+      border-color: rgba(${flipRgb},0.45);
+      color: #fff;
+    }
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-sm { padding: 4px 8px; font-size: 11px; border-radius: 6px; }
+    .btn-lg { padding: 9px 18px; font-size: 13px; border-radius: var(--radius); }
+
+    /* ── Inputs ── */
+    input, textarea, select {
+      display: block;
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      color: rgba(255,255,255,0.9);
+      padding: 7px 11px;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(${flipRgb},0.45);
+      box-shadow: 0 0 0 3px rgba(${flipRgb},0.08);
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-faint); }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 5px;
       font-weight: 500;
     }
+
+    /* ── Cards ── */
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 8px;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: var(--border-hover); }
+    .card-flat { background: rgba(0,0,0,0.2); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(${flipRgb},0.12);
+      color: var(--flip-light);
+      border: 1px solid rgba(${flipRgb},0.20);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .badge-success {
+      background: rgba(34,197,94,0.12);
+      color: #4ade80;
+      border-color: rgba(34,197,94,0.20);
+    }
+    .badge-warning {
+      background: rgba(245,158,11,0.12);
+      color: #fbbf24;
+      border-color: rgba(245,158,11,0.20);
+    }
+    .badge-error {
+      background: rgba(239,68,68,0.12);
+      color: #f87171;
+      border-color: rgba(239,68,68,0.20);
+    }
+    .badge-accent {
+      background: rgba(${accentRgb},0.12);
+      color: var(--accent);
+      border-color: rgba(${accentRgb},0.20);
+    }
+
+    /* ── Alert boxes ── */
+    .alert {
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      border: 1px solid;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .alert-info    { background: rgba(${flipRgb},0.08);  border-color: rgba(${flipRgb},0.18);  color: var(--flip-light); }
+    .alert-success { background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.18);  color: #4ade80; }
+    .alert-warning { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.18); color: #fbbf24; }
+    .alert-error   { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.18);  color: #f87171; }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 0;
+    }
+
+    /* ── Loading spinner ── */
+    @keyframes flip-spin { to { transform: rotate(360deg); } }
+    .flip-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(${flipRgb},0.2);
+      border-top-color: var(--flip-light);
+      border-radius: 50%;
+      animation: flip-spin 0.7s linear infinite;
+    }
+    .flip-spinner-sm { width: 12px; height: 12px; border-width: 1.5px; }
+    .flip-spinner-lg { width: 22px; height: 22px; border-width: 2.5px; }
+
+    /* ── Utility ── */
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .flex     { display: flex; }
+    .flex-col { display: flex; flex-direction: column; }
+    .flex-1   { flex: 1; min-width: 0; }
+    .gap-1    { gap: 4px;  }
+    .gap-2    { gap: 8px;  }
+    .gap-3    { gap: 12px; }
+    .items-center  { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .w-full   { width: 100%; }
+    .mt-1 { margin-top: 4px; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
+    .mb-1 { margin-bottom: 4px; } .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; }
+    .p-1  { padding: 4px;  } .p-2  { padding: 8px;  } .p-3  { padding: 12px; } .p-4  { padding: 16px; }
+    .text-sm  { font-size: 12px; }
+    .text-xs  { font-size: 11px; }
+    .text-xxs { font-size: 10px; }
+    .text-muted { color: var(--text-muted); }
+    .text-faint { color: var(--text-faint); }
+    .text-flip  { color: var(--flip-light); }
+    .text-accent { color: var(--accent); }
+    .text-success { color: #4ade80; }
+    .text-warning { color: #fbbf24; }
+    .text-error   { color: #f87171; }
+    .scroll-y { overflow-y: auto; }
+    .nowrap   { white-space: nowrap; }
   </style>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
@@ -797,75 +1019,6 @@ export default function ExtensionHost({ extension, width = '100%', height = '100
             return;
           }
           result = { error: 'Save API not available' };
-          break;
-        }
-        case 'x402.pay': {
-          // Extension-triggered micropayment — requires 'network' permission
-          const amount = payload?.amount || payload?.price;
-          const to = payload?.to || payload?.payTo;
-          const reason = payload?.reason || payload?.description || extension.manifest?.name || extension.id;
-          if (!amount || !to) {
-            result = { error: 'Missing amount or recipient address' };
-            break;
-          }
-          // Dispatch a custom event so X402PaymentPrompt can show a UI prompt
-          const payId = Date.now();
-          const payPromise = new Promise((resolve) => {
-            function onResult(ev) {
-              if (ev.detail?.id === payId) {
-                window.removeEventListener('flip-x402-ext-result', onResult);
-                resolve(ev.detail.result);
-              }
-            }
-            window.addEventListener('flip-x402-ext-result', onResult);
-            setTimeout(() => {
-              window.removeEventListener('flip-x402-ext-result', onResult);
-              resolve({ error: 'Payment timed out' });
-            }, 120000);
-          });
-          window.dispatchEvent(new CustomEvent('flip-x402-ext-pay', {
-            detail: {
-              id: payId,
-              amount: String(amount).replace('$', ''),
-              to,
-              reason,
-              extensionId: extension.id,
-              extensionName: extension.manifest?.name || extension.id,
-            },
-          }));
-          payPromise.then(r => {
-            iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
-          });
-          return;
-        }
-        case 'x402.walletInfo': {
-          if (window.flipAPI?.walletInfo) {
-            window.flipAPI.walletInfo().then(r => {
-              iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
-            });
-            return;
-          }
-          result = { error: 'Wallet not available' };
-          break;
-        }
-        case 'x402.balance': {
-          if (window.flipAPI?.walletBalance) {
-            window.flipAPI.walletBalance(payload?.testnet).then(r => {
-              iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
-            });
-            return;
-          }
-          result = { error: 'Wallet not available' };
-          break;
-        }
-        case 'x402.txHistory': {
-          if (window.flipAPI?.walletTxHistory) {
-            window.flipAPI.walletTxHistory().then(r => {
-              iframeRef.current?.contentWindow?.postMessage({ source: 'flip-host', callbackId, result: r }, '*');
-            });
-            return;
-          }
-          result = { error: 'Wallet not available' };
           break;
         }
         default:

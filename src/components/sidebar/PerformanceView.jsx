@@ -81,7 +81,8 @@ function PerformanceView() {
 
         {/* Tab Suspend Stats */}
         {(() => {
-          const stats = useBrowserStore.getState().getSuspendStats();
+          const state = useBrowserStore.getState();
+          const stats = state.getSuspendStats ? state.getSuspendStats() : { active: 0, suspended: 0, total: 0, estimatedSavedMB: 0 };
           return (
             <div className="p-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] space-y-2">
               <div className="flex items-center justify-between">
@@ -148,21 +149,5 @@ function PerformanceView() {
     </div>
   );
 }
-
-const SHORTCUT_LABELS = {
-  newTab: 'New Tab',
-  closeTab: 'Close Tab',
-  reopenTab: 'Reopen Closed Tab',
-  commandPalette: 'Command Palette',
-  focusAddress: 'Focus Address Bar',
-  toggleSidebar: 'Toggle Sidebar',
-  splitView: 'Split View',
-  devTools: 'Developer Tools',
-  reload: 'Reload Page',
-  zoomIn: 'Zoom In',
-  zoomOut: 'Zoom Out',
-  zoomReset: 'Zoom Reset',
-  pip: 'Picture-in-Picture',
-};
 
 export default PerformanceView;

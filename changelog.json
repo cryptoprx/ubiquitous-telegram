@@ -1,19 +1,167 @@
 {
+  "1.2.114": [
+    "Fixed AI Summarize — removed broken config guard that was blocking the feature"
+  ],
+  "1.2.113": [
+    "Fixed AI Summarize button showing floating Info toast instead of working — now shows clear warning when AI is not configured",
+    "Fixed AI config check using wrong logic (AND vs OR) — both provider and model must be set"
+  ],
+  "1.2.112": [
+    "Fixed pages not loading — reverted to direct src navigation, removed about:blank intermediate that broke page loading"
+  ],
+  "1.2.111": [
+    "Fixed blank page issue — webview now initializes with about:blank then navigates via loadURL after guest is ready"
+  ],
+  "1.2.110": [
+    "CRITICAL: Fixed page crash on first navigation — removed src= attribute from webview, now uses deferred loadURL() to let GPU initialize",
+    "DNS-over-HTTPS mode changed from secure to automatic for reliable DNS fallback"
+  ],
+  "1.2.109": [
+    "CRITICAL: Fixed page crash when searching from New Tab — double navigation (src + loadURL) was crashing the renderer",
+    "GPU stability switches added to prevent renderer process crashes",
+    "Fixed duplicate enable-features flag that was silently disabling DNS-over-HTTPS",
+    "Hardened webview crash handler — safe getURL, filters clean-exit events"
+  ],
+  "1.2.108": [
+    "Fixed webview renderer crashes on sites like DuckDuckGo — duplicate enable-features flag was disabling DNS-over-HTTPS",
+    "Removed Linux-only WebRTCPipeWireCapturer flag that was overwriting DoH config on Windows",
+    "Added GPU stability switches to prevent renderer process crashes",
+    "Hardened crash handler — no longer throws on dead webContents, filters out clean-exit events"
+  ],
+  "1.2.107": [
+    "CRITICAL FIX: Unbookmark via star icon now works — was silently failing due to URL/ID mismatch",
+    "Fixed duplicate tab suspension timers competing and wasting resources",
+    "Fixed webview memory leak — closed tab refs are now properly cleaned up",
+    "Fixed Ctrl+Shift+P accidentally triggering print dialog",
+    "Split view now correctly renders DevTools, Marketplace, Studio, and Extension tabs",
+    "Fixed Ctrl+W potentially closing wrong tab after rapid Ctrl+Shift+T reopen"
+  ],
+  "1.2.106": [
+    "Undo close tab: Ctrl+Shift+T now reopens the last closed tab (stores up to 10)",
+    "Bookmark star: visual bounce animation on add/remove for instant feedback",
+    "AI Summarize: now shows a helpful toast if AI is not configured instead of failing silently",
+    "History: added Clear All with 2-step confirmation to prevent accidents",
+    "History: each entry now shows the visit timestamp",
+    "History: per-item delete via hover X button",
+    "Downloads: added Clear Completed button to dismiss finished downloads",
+    "Downloads: clicking a completed filename now opens the file directly",
+    "Password manager: Generate button creates a strong 20-char random password",
+    "Password manager: strength meter (Weak/Medium/Strong) shown while typing",
+    "Overflow menu: Screenshot and Print now show keyboard shortcut hints",
+    "Tab loading: replaced tiny pulse dot with a visible spinner ring",
+    "Tab close: hover tooltip now shows the tab title for safety",
+    "Command palette: added Reopen Closed Tab action with Ctrl+Shift+T",
+    "News images: fixed conflicting aspect ratio for consistent card layout",
+    "Bookmarks: removed hardcoded dark color from category dropdown options"
+  ],
+  "1.2.105": [
+    "About flyout: fixed animated GIF logo display, removed Settings shortcut for a cleaner layout"
+  ],
+  "1.2.104": [
+    "About flyout: fixed broken GIF logo — now imported as a Vite asset so it resolves correctly in both dev and production builds"
+  ],
+  "1.2.103": [
+    "Critical fix: resolved crash when clicking the browser logo — process.versions is unavailable in sandboxed renderer"
+  ],
+  "1.2.102": [
+    "Update banner: removed stale changelog from the 'Ready to Install' notification — users see a clean prompt, full changelog shown in What's New post-install",
+    "About flyout: now uses the animated Flip GIF logo instead of static icon"
+  ],
+  "1.2.101": [
+    "Shell: eliminated startup flash — window now uses ready-to-show pattern with theme-matched background color",
+    "Shell: added Windows 11 native rounded corners support",
+    "Design system: vibrancy panels, command overlay, select dropdowns, and text selection now adapt to active theme (Ocean, Purple, Forest, Rose, Monochrome)",
+    "Design system: added keyboard focus-visible ring system for accessibility",
+    "Design system: respects prefers-reduced-motion for users with motion sensitivity",
+    "Address bar: increased height from 40px to 44px for better clickability, nav buttons now have press animation",
+    "Sidebar: active tab now shows left accent bar indicator (visible on all themes including Monochrome)",
+    "Sidebar: panel close now animates smoothly instead of hard-cut disappearing",
+    "Sidebar: More Tools popup now organized into categorized sections",
+    "Sidebar: version number is now clickable — shows What's New changelog",
+    "New Tab: background and ambient orbs now use theme-aware colors instead of hardcoded orange",
+    "New Tab: keyboard shortcuts row wraps gracefully on narrow windows",
+    "Command palette: actions now show keyboard shortcut hints (Ctrl+T, Ctrl+W, Ctrl+B, etc.)",
+    "Command palette: backdrop now uses theme-aware blurred overlay",
+    "Tailwind: added spring easing token and slide-left animation for consistent motion language",
+    "Logo: clicking the Flip logo now opens a premium About flyout with CROAKWORKS branding, version info, Electron/Chromium details, and quick links to Home and Settings"
+  ],
+  "1.2.100": [
+    "Shell: eliminated startup flash — window now uses ready-to-show pattern with theme-matched background color",
+    "Shell: added Windows 11 native rounded corners support",
+    "Design system: vibrancy panels, command overlay, select dropdowns, and text selection now adapt to active theme (Ocean, Purple, Forest, Rose, Monochrome)",
+    "Design system: added keyboard focus-visible ring system for accessibility",
+    "Design system: respects prefers-reduced-motion for users with motion sensitivity",
+    "Address bar: increased height from 40px to 44px for better clickability, nav buttons now have press animation",
+    "Sidebar: active tab now shows left accent bar indicator (visible on all themes including Monochrome)",
+    "Sidebar: panel close now animates smoothly instead of hard-cut disappearing",
+    "Sidebar: More Tools popup now organized into categorized sections",
+    "Sidebar: version number is now clickable — shows What's New changelog",
+    "New Tab: background and ambient orbs now use theme-aware colors instead of hardcoded orange",
+    "New Tab: keyboard shortcuts row wraps gracefully on narrow windows",
+    "Command palette: actions now show keyboard shortcut hints (Ctrl+T, Ctrl+W, Ctrl+B, etc.)",
+    "Command palette: backdrop now uses theme-aware blurred overlay",
+    "Tailwind: added spring easing token and slide-left animation for consistent motion language"
+  ],
+  "1.2.99": [
+    "Update banner: removed stale changelog from the \"Update Available\" notification — correct changelog now only shows in the \"What's New\" modal after install"
+  ],
+  "1.2.98": [
+    "Fixed crash: AddressBar was missing sileo import — Home button, bookmark toggle, and AI copy actions threw ReferenceError on every click",
+    "Fixed AI tab actions (close tab, switch tab) using wrong lookup — was treating tab ID as array index, now correctly finds tab by ID",
+    "License gate now uses theme-aware design tokens (flip-500/flip-400) instead of hardcoded orange — renders correctly on all 6 color themes",
+    "Crypto market panel: added error state with Retry button when CoinGecko API fails — previously showed eternal spinner on rate-limit or network error",
+    "Performance panel: removed 15 lines of dead SHORTCUT_LABELS code left from copy-paste, added safety check for getSuspendStats",
+    "Full 23-point frontend audit completed — identified and fixed 6 critical, high, and medium-priority issues across AddressBar, App, LicenseGate, CryptoView, and PerformanceView"
+  ],
+  "1.2.97": [
+    "Fixed critical bug: security settings (HTTPS-only, fingerprint protection, ad blocker, tracking) now correctly apply on browser startup — previously main process used hardcoded defaults on every launch",
+    "Fixed HTTPS-only mode default to off — prevents crashes on HTTP-only sites for new users",
+    "Fixed duplicate navigation event handler in WebContent that caused race conditions on fast navigation",
+    "Settings: replaced blocking alert() dialogs with inline animated feedback — cache clear, import/export all show green confirmations",
+    "Settings: added Google to search engine options",
+    "Permission prompt now auto-dismisses if you navigate away from the requesting site before responding",
+    "News feed shows cached content + retry button on connection failure instead of silently hiding",
+    "Downloads panel: added Open Folder button on completed downloads (reveals file in system file manager)",
+    "Bookmarks bar: shows helpful empty state when enabled with no bookmarks instead of invisibly hiding",
+    "Performance: main JS bundle reduced from 766KB to 459KB (40% smaller) by splitting ethers, monaco, firebase, and lucide into separate lazy chunks"
+  ],
+  "1.2.96": [
+    "Removed x402 payment protocol and Base chain wallet — all payment infrastructure fully stripped from the browser",
+    "Removed Wallet sidebar panel, IPC handlers, wallet.js module, and all preload wallet bridges",
+    "Removed Flip.x402 and Flip.wallet from Extension SDK — extensions calling these APIs return a clean error instead of crashing",
+    "Removed micropay-widget extension template from Extension Studio",
+    "Removed x402 permission option from ManifestEditor in Extension Studio",
+    "Browser is now 100% payment-protocol-free — leaner, cleaner, and faster startup"
+  ],
+  "1.2.95": [
+    "Extension frontend unified with browser design system — all extensions now inherit the user's active color theme",
+    "Theme-aware CSS injection — ExtensionHost reads browser CSS variables at runtime and injects them into extension iframes",
+    "Extension Studio live preview now matches the real extension runtime styling exactly",
+    "DevDashboard: CodeBlock and InfoBox components updated to match design tokens",
+    "community-chat extension modernized — replaced inline styles with CSS variables, uses .flip-spinner utility",
+    "ManifestEditor inputs standardized to rounded-xl border radius"
+  ],
+  "1.2.94": [
+    "Shared icon module (extIcons.jsx) — eliminated 270+ lines of duplicated icon code across extension components",
+    "ExtensionDock: fixed CLS issue in dock reveal animation by using minHeight instead of height",
+    "ExtensionPanel: removed dangerous setExtensions([]) cleanup that was wiping the global extensions store",
+    "ExtensionManager, ExtensionDock, ExtensionPanel all refactored to use shared icon module",
+    "Extension iframes now receive full design system utility classes (btn-primary, badge-success, flip-spinner, etc.)"
+  ],
   "1.2.93": [
-    "Integrated Sileo React library for physics-based toast animations across the app",
-    "Added gooey morphing success notifications for copying wallets, mnemonics, and passwords",
-    "Added interactive toast notifications for extension installation and bookmarking",
-    "Fixed a crash that occurred when clicking the Shortcuts button in the sidebar"
+    "Extension platform modernization — major architecture cleanup and design system alignment",
+    "New shared extIcons.jsx module created as single source of truth for extension iconography",
+    "ExtensionHost rewired to inject resolved theme tokens from the active browser theme",
+    "Extension UI now adapts to Ocean Blue, Midnight Purple, Forest Green, and all other themes automatically"
   ],
   "1.2.92": [
     "Integrated Sileo React library for physics-based toast animations across the app",
-    "Added gooey morphing success notifications for copying wallets, mnemonics, and passwords",
+    "Added gooey morphing success notifications for copying passwords and other actions",
     "Added interactive toast notifications for extension installation and bookmarking",
     "Fixed a crash that occurred when clicking the Shortcuts button in the sidebar"
   ],
   "1.2.91": [
     "Integrated Sileo React library for physics-based toast animations across the app",
-    "Added gooey morphing success notifications for copying wallets, mnemonics, and passwords",
     "Added interactive toast notifications for extension installation and bookmarking",
     "Fixed a crash that occurred when clicking the Shortcuts button in the sidebar"
   ],

@@ -43,7 +43,7 @@ export default function LicenseGate({ onActivated }) {
       <div className="w-full max-w-sm mx-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-orange-500/30">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-flip-500 to-flip-400 flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-flip-500/30">
             <Globe size={28} className="text-white" />
           </div>
           <h1 className="text-xl font-bold text-white/90">Welcome to Flip Browser</h1>
@@ -64,7 +64,7 @@ export default function LicenseGate({ onActivated }) {
                 onChange={handleKeyChange}
                 placeholder="FLIP-XXXX-XXXX-XXXX"
                 autoFocus
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-4 py-3.5 text-sm text-white/80 font-mono tracking-widest placeholder:text-white/10 placeholder:tracking-widest outline-none focus:border-orange-500/40 transition-colors text-center"
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-4 py-3.5 text-sm text-white/80 font-mono tracking-widest placeholder:text-white/10 placeholder:tracking-widest outline-none focus:border-flip-500/40 transition-colors text-center"
               />
             </div>
           </div>
@@ -79,7 +79,7 @@ export default function LicenseGate({ onActivated }) {
           <button
             type="submit"
             disabled={loading || key.length < 16}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-orange-500/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-flip-500 to-flip-400 text-white font-semibold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-flip-500/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

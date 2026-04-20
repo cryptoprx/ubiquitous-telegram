@@ -399,6 +399,14 @@ const info = Flip.browser.getInfo();
 <!-- Utility classes -->
 <div class="card">Card container</div>
 <span class="badge">Badge pill</span>
+<span class="badge-success">Success</span>
+<span class="badge-warning">Warning</span>
+<span class="badge-error">Error</span>
+<div class="alert alert-info">Info alert</div>
+<div class="divider"></div>
+<button class="btn-primary">Primary CTA</button>
+<button class="btn-ghost">Ghost button</button>
+<div class="flip-spinner"></div>
 <a href="#">Themed link</a>`}</CodeBlock>
           <p className="text-[10px] text-white/30">All elements auto-match Flip's dark theme with orange accents.</p>
         </div>
@@ -766,7 +774,7 @@ function CodeBlock({ children, lang }) {
   }
   return (
     <div className="relative group">
-      <pre className="bg-black/30 border border-white/[0.06] rounded-lg p-2.5 text-[10px] font-mono overflow-x-auto leading-relaxed text-green-300/60">
+      <pre className="bg-black/30 border border-white/[0.06] rounded-xl p-2.5 text-[10px] font-mono overflow-x-auto leading-relaxed text-teal-300/70">
         {children}
       </pre>
       <button
@@ -798,13 +806,13 @@ function StepList({ steps }) {
 function InfoBox({ children, type = 'info' }) {
   return (
     <div className={clsx(
-      'flex items-start gap-2 p-2.5 rounded-lg border',
+      'flex items-start gap-2 p-2.5 rounded-xl border',
       type === 'warning'
-        ? 'bg-amber-500/5 border-amber-500/15'
-        : 'bg-flip-500/5 border-flip-500/15'
+        ? 'bg-amber-500/8 border-amber-500/20 text-amber-300/70'
+        : 'bg-flip-500/5 border-flip-500/15 text-white/40'
     )}>
-      <Info size={11} className={type === 'warning' ? 'text-amber-400 mt-0.5' : 'text-flip-400 mt-0.5'} />
-      <div className="text-[10px] text-white/40 leading-relaxed">{children}</div>
+      <Info size={11} className={type === 'warning' ? 'text-amber-400 mt-0.5 flex-shrink-0' : 'text-flip-400 mt-0.5 flex-shrink-0'} />
+      <div className="text-[10px] leading-relaxed">{children}</div>
     </div>
   );
 }

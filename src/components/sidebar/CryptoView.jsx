@@ -5,6 +5,7 @@ import clsx from 'clsx';
 function CryptoView() {
   const [coins, setCoins] = useState([]);
   const [priceLoading, setPriceLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     fetchCoins();
@@ -14,17 +15,35 @@ function CryptoView() {
 
   async function fetchCoins() {
     setPriceLoading(true);
+    setFetchError(false);
     try {
       const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h');
-      if (res.ok) setCoins(await res.json());
-    } catch {}
+      if (res.ok) {
+        setCoins(await res.json());
+      } else {
+        if (coins.length === 0) setFetchError(true);
+      }
+    } catch {
+      if (coins.length === 0) setFetchError(true);
+    }
     setPriceLoading(false);
   }
 
   return (
     <div className="flex-1 overflow-y-auto px-3 py-2">
       <div className="sidebar-section px-0">Market Prices</div>
-      {priceLoading && coins.length === 0 ? (
+      {fetchError && coins.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-6 gap-2">
+          <RefreshCw size={14} className="text-white/20" />
+          <p className="text-[10px] text-white/30">Could not load prices</p>
+          <button
+            onClick={fetchCoins}
+            className="px-3 py-1 rounded-lg bg-flip-500/15 border border-flip-500/20 text-[9px] text-flip-400 font-medium hover:bg-flip-500/25 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      ) : priceLoading && coins.length === 0 ? (
         <div className="flex items-center justify-center py-6 text-white/20"><RefreshCw size={14} className="animate-spin" /></div>
       ) : (
         <div className="space-y-0.5">

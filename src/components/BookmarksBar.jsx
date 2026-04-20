@@ -5,7 +5,16 @@ import useBrowserStore from '../store/browserStore';
 export default function BookmarksBar() {
   const { bookmarks, settings, addTab } = useBrowserStore();
 
-  if (!settings.showBookmarksBar || bookmarks.length === 0) return null;
+  if (!settings.showBookmarksBar) return null;
+
+  if (bookmarks.length === 0) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-1 bg-surface-1/80 backdrop-blur-sm border-b border-white/5">
+        <Star size={10} className="text-white/15 flex-shrink-0" />
+        <span className="text-[10px] text-white/20 italic">Bookmark pages with ⭐ to see them here</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-0.5 px-3 py-1 bg-surface-1/80 backdrop-blur-sm border-b border-white/5 overflow-x-auto scrollbar-none">

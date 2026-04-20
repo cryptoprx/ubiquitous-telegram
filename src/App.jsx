@@ -11,7 +11,6 @@ import DevDashboard from './components/extensions/DevDashboard';
 import BookmarksBar from './components/BookmarksBar';
 import Marketplace from './components/Marketplace';
 import LicenseGate from './components/LicenseGate';
-import X402PaymentPrompt from './components/X402PaymentPrompt';
 import AiOverlay from './components/AiOverlay';
 import ExtensionStudio from './pages/ExtensionStudio';
 import ExtensionTabView from './components/ExtensionTabView';
@@ -120,10 +119,13 @@ export default function App() {
       const ws = await window.flipAPI.getWorkspaces();
       if (ws) useBrowserStore.getState().setWorkspaces(ws);
 
-      // Sync ad block / tracking settings to main process
+      // Sync all security settings to main process on boot
+      // Without this, main.js uses its hardcoded defaults regardless of saved user settings
       const s = useBrowserStore.getState().settings;
-      window.flipAPI.setAdBlock(s.adBlockEnabled);
-      window.flipAPI.setTrackingProtection(s.trackingProtection);
+      window.flipAPI.setAdBlock(s.adBlockEnabled ?? true);
+      window.flipAPI.setTrackingProtection(s.trackingProtection ?? true);
+      window.flipAPI?.setHttpsOnly?.(s.httpsOnly ?? false);
+      window.flipAPI?.setFingerprintProtection?.(s.fingerprintProtection ?? true);
     }
     loadPersistentData();
   }, [licenseActive]);
@@ -180,7 +182,7 @@ export default function App() {
     // AI browser action events
     window.flipAPI.onAiCloseTab?.((tabId) => {
       const state = useBrowserStore.getState();
-      const tab = state.tabs[tabId];
+      const tab = state.tabs.find(t => t.id === tabId);
       if (tab) state.closeTab(tab.id);
     });
     window.flipAPI.onAiNavigateCurrent?.((url) => {
@@ -205,7 +207,7 @@ export default function App() {
     });
     window.flipAPI.onAiSwitchTab?.((tabId) => {
       const state = useBrowserStore.getState();
-      const tab = state.tabs[tabId];
+      const tab = state.tabs.find(t => t.id === tabId);
       if (tab) state.setActiveTab(tab.id);
     });
     window.flipAPI.onAiCloseOtherTabs?.(() => {
@@ -281,10 +283,11 @@ export default function App() {
       const mod = e.ctrlKey || e.metaKey;
 
       if (mod && e.key === 'k') { e.preventDefault(); toggleCommandPalette(); }
-      if (mod && e.key === 't') { e.preventDefault(); addTab(); }
-      if (mod && e.key === 'w') { e.preventDefault(); useBrowserStore.getState().closeTab(activeTabId); }
+      if (mod && e.shiftKey && (e.key === 'T' || e.key === 't')) { e.preventDefault(); useBrowserStore.getState().reopenLastClosedTab(); return; }
+      if (mod && !e.shiftKey && e.key === 't') { e.preventDefault(); addTab(); }
+      if (mod && e.key === 'w') { e.preventDefault(); const s = useBrowserStore.getState(); s.closeTab(s.activeTabId); }
       if (mod && e.key === 'l') { e.preventDefault(); document.getElementById('flip-address-input')?.focus(); }
-      if (mod && e.key === 'p') { e.preventDefault(); window.dispatchEvent(new CustomEvent('flip-print', { detail: { tabId: activeTabId } })); }
+      if (mod && !e.shiftKey && e.key === 'p') { e.preventDefault(); window.dispatchEvent(new CustomEvent('flip-print', { detail: { tabId: activeTabId } })); }
       if (mod && e.shiftKey && e.key === 'S') { e.preventDefault(); window.dispatchEvent(new CustomEvent('flip-snip', { detail: { tabId: activeTabId } })); }
       if (mod && e.key === 'f') { e.preventDefault(); window.dispatchEvent(new CustomEvent('flip-find-in-page', { detail: { tabId: activeTabId } })); }
       if (e.key === 'F11') { e.preventDefault(); window.flipAPI?.toggleFullscreen?.(); }
@@ -301,27 +304,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTabId]);
 
-  // Per-site tab suspension timer (respects tabSuspensionEnabled setting)
-  useEffect(() => {
-    if (!settings.tabSuspensionEnabled) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const state = useBrowserStore.getState();
-      state.tabs.forEach((tab) => {
-        if (
-          tab.id !== state.activeTabId &&
-          !tab.suspended &&
-          !tab.pinned &&
-          !tab.url?.startsWith('flip://') &&
-          tab.lastActive &&
-          now - tab.lastActive > state.settings.tabSuspensionTimeout
-        ) {
-          state.suspendTab(tab.id);
-        }
-      });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [settings.tabSuspensionEnabled, settings.tabSuspensionTimeout]);
+
 
   const isNewTab = activeTab?.url === 'flip://newtab';
   const isDevTools = activeTab?.url === 'flip://devtools';
@@ -385,11 +368,16 @@ export default function App() {
                 <div className="split-divider" />
                 <div className="flex flex-col flex-1 min-w-0">
                   <SplitAddressBar />
-                  {tabs.find((t) => t.id === splitTabId)?.url === 'flip://newtab' ? (
-                    <NewTabPage isSplit />
-                  ) : (
-                    <WebContent tabId={splitTabId} />
-                  )}
+                  {(() => {
+                    const splitTab = tabs.find((t) => t.id === splitTabId);
+                    const splitUrl = splitTab?.url || '';
+                    if (splitUrl === 'flip://newtab') return <NewTabPage isSplit />;
+                    if (splitUrl === 'flip://devtools') return <DevDashboard />;
+                    if (splitUrl === 'flip://marketplace') return <Marketplace />;
+                    if (splitUrl === 'flip://studio') return <ExtensionStudio />;
+                    if (splitUrl.startsWith('flip://ext/')) return <ExtensionTabView extensionId={splitUrl.replace('flip://ext/', '')} />;
+                    return <WebContent tabId={splitTabId} />;
+                  })()}
                 </div>
               </>
             )}
@@ -411,9 +399,6 @@ export default function App() {
 
       {/* Incoming call overlay */}
       <IncomingCallOverlay />
-
-      {/* x402 Payment prompt overlay */}
-      <X402PaymentPrompt />
 
       {/* AI floating overlay for context menu actions */}
       <AiOverlay />

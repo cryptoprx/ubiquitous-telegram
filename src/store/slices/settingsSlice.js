@@ -1,8 +1,8 @@
 const DEFAULT_SETTINGS = {
   adBlockEnabled: true,
   trackingProtection: true,
-  theme: 'dark',
-  httpsOnly: true,
+  theme: null,
+  httpsOnly: false,
   fingerprintProtection: true,
   tabSuspensionEnabled: true,
   tabSuspensionTimeout: 300000,

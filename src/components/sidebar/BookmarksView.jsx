@@ -97,7 +97,7 @@ function BookmarksView() {
               onChange={(e) => { e.stopPropagation(); updateBookmark(bm.id, { category: e.target.value }); }}
               className="opacity-0 group-hover:opacity-100 bg-transparent text-[8px] text-white/40 outline-none cursor-pointer w-12 transition-opacity"
             >
-              {bookmarkCategories.map(c => <option key={c} value={c} className="bg-[#1a1816] text-white">{c}</option>)}
+              {bookmarkCategories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <button
               onClick={(e) => { e.stopPropagation(); removeBookmark(bm.id); }}

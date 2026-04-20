@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Globe, Plus, X, Pin, Copy, Layers, Pause,
-  Bookmark, Clock, Download, KeyRound, Puzzle, Settings, Wallet,
+  Bookmark, Clock, Download, KeyRound, Puzzle, Settings,
   Shield, MoreHorizontal,
   Bitcoin, ShieldCheck, CreditCard, BellRing, Activity, Keyboard,
   UserCircle2, Globe2, BookOpenCheck, Bot,
@@ -21,7 +21,6 @@ const BookmarksView = lazy(() => import('./sidebar/BookmarksView'));
 const HistoryView = lazy(() => import('./sidebar/HistoryView'));
 const DownloadsView = lazy(() => import('./sidebar/DownloadsView'));
 const PasswordsView = lazy(() => import('./sidebar/PasswordsView'));
-const WalletView = lazy(() => import('./sidebar/WalletView'));
 const CryptoView = lazy(() => import('./sidebar/CryptoView'));
 const VpnView = lazy(() => import('./sidebar/VpnView'));
 const AutofillView = lazy(() => import('./sidebar/AutofillView'));
@@ -52,7 +51,6 @@ const PRIMARY_NAV = [
   { id: 'history', icon: Clock, labelKey: 'history' },
   { id: 'downloads', icon: Download, labelKey: 'downloads' },
   { id: 'passwords', icon: KeyRound, labelKey: 'passwords' },
-  { id: 'wallet', icon: Wallet, labelKey: 'wallet' },
   { id: 'settings', icon: Settings, labelKey: 'settings' },
 ];
 
@@ -86,6 +84,7 @@ export default function Sidebar() {
   const [contextMenu, setContextMenu] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [moreOpen, setMoreOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const panelRef = useRef(null);
   const moreRef = useRef(null);
 
@@ -110,8 +109,12 @@ export default function Sidebar() {
   }
 
   function closePanel() {
-    setPanelOpen(false);
-    setActivePanel(null);
+    setClosing(true);
+    setTimeout(() => {
+      setPanelOpen(false);
+      setActivePanel(null);
+      setClosing(false);
+    }, 180);
   }
 
   function handleTabContext(e, tab) {
@@ -175,11 +178,14 @@ export default function Sidebar() {
                 'relative w-9 h-9 rounded-[12px] flex items-center justify-center group',
                 'transition-all duration-200',
                 tab.id === activeTabId
-                  ? 'bg-flip-500/10 ring-1 ring-flip-500/15'
+                  ? 'bg-flip-500/10 ring-1 ring-flip-500/25'
                   : 'bg-white/[0.03] hover:bg-white/[0.06] hover:scale-105'
               )}
               title={tab.title || 'New Tab'}
             >
+              {tab.id === activeTabId && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-flip-500" />
+              )}
               {tab.favicon ? (
                 <img src={tab.favicon} className={clsx('w-[18px] h-[18px] rounded-[4px] transition-transform duration-200', tab.id === activeTabId && 'scale-110')} alt="" />
               ) : (
@@ -251,7 +257,7 @@ export default function Sidebar() {
               +{tabs.length - 6}
             </button>
           )}
-          <span className="text-[8px] text-white/15 mt-0.5 select-text" title="Flip Browser version">v{__APP_VERSION__}</span>
+          <span className="text-[8px] text-white/15 mt-0.5 select-text cursor-pointer hover:text-white/30 transition-colors" title="What's New" onClick={() => window.flipAPI?.getWhatsNew?.().then(d => d && window.dispatchEvent(new CustomEvent('flip-show-whatsnew', { detail: d })))}>v{__APP_VERSION__}</span>
         </div>
       </div>
 
@@ -264,7 +270,7 @@ export default function Sidebar() {
         >
           <div className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-2.5 px-1">More Tools</div>
           <div className="grid grid-cols-3 gap-1.5">
-            {MORE_NAV.map((item, i) => (
+            {MORE_NAV.slice(0, 3).map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => openMoreItem(item.id)}
@@ -289,6 +295,34 @@ export default function Sidebar() {
               </button>
             ))}
           </div>
+          {/* Customize section */}
+          <div className="text-[9px] font-medium text-white/20 uppercase tracking-wider mt-3 mb-1.5 px-1">Customize</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {MORE_NAV.slice(3).map((item, i) => (
+              <button
+                key={item.id}
+                onClick={() => openMoreItem(item.id)}
+                className={clsx(
+                  'group flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-[12px] transition-all duration-200 animate-fade-in-up',
+                  activePanel === item.id && panelOpen
+                    ? 'bg-flip-500/10 text-flip-400 ring-1 ring-flip-500/15'
+                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]'
+                )}
+                style={{ animationDelay: `${(i + 3) * 25}ms` }}
+                title={t(item.labelKey, lang)}
+              >
+                <div className={clsx(
+                  'w-8 h-8 rounded-[10px] flex items-center justify-center transition-all duration-200',
+                  activePanel === item.id && panelOpen
+                    ? 'bg-flip-500/15'
+                    : 'bg-white/[0.03] group-hover:bg-white/[0.06] group-hover:scale-105'
+                )}>
+                  <item.icon size={14} />
+                </div>
+                <span className="text-[9px] font-medium leading-tight text-center">{t(item.labelKey, lang)}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -296,7 +330,10 @@ export default function Sidebar() {
       {panelOpen && (
         <div
           ref={panelRef}
-          className="absolute top-0 bottom-0 flex flex-col vibrancy border-r border-white/[0.06] shadow-mac-lg animate-slide-right"
+          className={clsx(
+            'absolute top-0 bottom-0 flex flex-col vibrancy border-r border-white/[0.06] shadow-mac-lg',
+            closing ? 'animate-slide-left' : 'animate-slide-right'
+          )}
           style={{ left: RAIL_WIDTH, width: 290 }}
         >
           {/* Panel header */}
@@ -343,7 +380,6 @@ export default function Sidebar() {
             {activePanel === 'history' && <HistoryView />}
             {activePanel === 'downloads' && <DownloadsView />}
             {activePanel === 'passwords' && <PasswordsView />}
-            {activePanel === 'wallet' && <WalletView />}
             {activePanel === 'crypto' && <CryptoView />}
             {activePanel === 'vpn' && <VpnView />}
             {activePanel === 'autofill' && <AutofillView />}

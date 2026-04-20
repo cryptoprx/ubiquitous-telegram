@@ -67,15 +67,16 @@ function TabCard({ tab, isActive, onClick, onClose, onContext, accentColor, comp
         </button>
       )}
 
-      {/* Loading pulse */}
+      {/* Loading indicator */}
       {tab.loading && (
-        <div className="w-2 h-2 rounded-full bg-flip-400 animate-pulse-subtle flex-shrink-0" />
+        <div className="w-3.5 h-3.5 rounded-full border-2 border-flip-400/40 border-t-flip-400 animate-spin flex-shrink-0" />
       )}
 
       {/* Close button */}
       <button
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-all text-white/40 hover:text-white flex-shrink-0"
+        title={`Close: ${tab.title || 'New Tab'}`}
       >
         <X size={compact ? 10 : 12} />
       </button>

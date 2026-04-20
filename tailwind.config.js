@@ -43,10 +43,14 @@ module.exports = {
         'mac-lg': '0 8px 32px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.04)',
         'mac-xl': '0 16px 48px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
       },
+      transitionTimingFunction: {
+        'spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
       animation: {
         'fade-in': 'fadeIn 0.15s ease-out',
         'slide-up': 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)',
         'slide-right': 'slideRight 0.25s cubic-bezier(0.16,1,0.3,1)',
+        'slide-left': 'slideLeft 0.2s cubic-bezier(0.16,1,0.3,1) forwards',
         'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
         'flip-in': 'flipIn 0.4s cubic-bezier(0.16,1,0.3,1)',
         'glow': 'glow 2s ease-in-out infinite alternate',
@@ -64,6 +68,10 @@ module.exports = {
         slideRight: {
           '0%': { opacity: '0', transform: 'translateX(-12px)' },
           '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideLeft: {
+          '0%': { opacity: '1', transform: 'translateX(0)' },
+          '100%': { opacity: '0', transform: 'translateX(-12px)' },
         },
         pulseSubtle: {
           '0%, 100%': { opacity: '1' },

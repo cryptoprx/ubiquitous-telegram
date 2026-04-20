@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search, Globe, Plus, X, Bookmark, Clock, Settings,
   Puzzle, SplitSquareHorizontal, Shield, PanelLeft,
-  ArrowRight, Command, Trash2, Pin, Copy, Code2,
+  ArrowRight, Command, Trash2, Pin, Copy, Code2, RotateCw,
 } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../store/browserStore';
@@ -30,10 +30,11 @@ export default function CommandPalette() {
 
     // Quick actions
     cmds.push(
-      { id: 'new-tab', type: 'action', icon: Plus, label: 'New Tab', action: () => { addTab(); closeCommandPalette(); } },
-      { id: 'close-tab', type: 'action', icon: X, label: 'Close Current Tab', action: () => { closeTab(activeTabId); closeCommandPalette(); } },
-      { id: 'split-view', type: 'action', icon: SplitSquareHorizontal, label: 'Toggle Split View', action: () => { toggleSplitView(); closeCommandPalette(); } },
-      { id: 'toggle-sidebar', type: 'action', icon: PanelLeft, label: 'Toggle Sidebar', action: () => { toggleSidebar(); closeCommandPalette(); } },
+      { id: 'new-tab', type: 'action', icon: Plus, label: 'New Tab', shortcut: 'Ctrl+T', action: () => { addTab(); closeCommandPalette(); } },
+      { id: 'close-tab', type: 'action', icon: X, label: 'Close Current Tab', shortcut: 'Ctrl+W', action: () => { closeTab(activeTabId); closeCommandPalette(); } },
+      { id: 'reopen-tab', type: 'action', icon: RotateCw, label: 'Reopen Closed Tab', shortcut: 'Ctrl+Shift+T', action: () => { useBrowserStore.getState().reopenLastClosedTab(); closeCommandPalette(); } },
+      { id: 'split-view', type: 'action', icon: SplitSquareHorizontal, label: 'Toggle Split View', shortcut: 'Ctrl+\\', action: () => { toggleSplitView(); closeCommandPalette(); } },
+      { id: 'toggle-sidebar', type: 'action', icon: PanelLeft, label: 'Toggle Sidebar', shortcut: 'Ctrl+B', action: () => { toggleSidebar(); closeCommandPalette(); } },
       { id: 'pin-tab', type: 'action', icon: Pin, label: 'Pin/Unpin Current Tab', action: () => { pinTab(activeTabId); closeCommandPalette(); } },
       { id: 'duplicate-tab', type: 'action', icon: Copy, label: 'Duplicate Current Tab', action: () => { duplicateTab(activeTabId); closeCommandPalette(); } },
       { id: 'settings', type: 'action', icon: Settings, label: 'Open Settings', action: () => { setSidebarView('settings'); closeCommandPalette(); } },
@@ -203,6 +204,9 @@ export default function CommandPalette() {
                       </div>
                       {isSelected && (
                         <ArrowRight size={12} className="text-flip-400" />
+                      )}
+                      {item.shortcut && (
+                        <kbd className="text-[9px] text-white/20 bg-white/[0.04] rounded-[4px] px-1.5 py-0.5 border border-white/[0.06] ml-auto flex-shrink-0">{item.shortcut}</kbd>
                       )}
                     </button>
                   );

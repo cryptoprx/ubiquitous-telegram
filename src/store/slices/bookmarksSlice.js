@@ -50,4 +50,14 @@ export const createBookmarksSlice = (set, get) => ({
 
   history: [],
   setHistory: (history) => set({ history }),
+  clearHistory: () => {
+    set({ history: [] });
+    window.flipAPI?.saveHistory?.([]);
+  },
+  removeHistoryItem: (index) =>
+    set((state) => {
+      const history = state.history.filter((_, i) => i !== index);
+      window.flipAPI?.saveHistory?.(history);
+      return { history };
+    }),
 });

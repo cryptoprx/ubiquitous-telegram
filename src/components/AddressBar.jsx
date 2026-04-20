@@ -36,6 +36,7 @@ export default function AddressBar() {
   const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId), [tabs, activeTabId]);
   const lang = settings.language || 'en';
   const [inputValue, setInputValue] = useState('');
+  const [localInput, setLocalInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -75,10 +76,24 @@ export default function AddressBar() {
   const isInternal = activeTab?.url?.startsWith('flip://');
 
   useEffect(() => {
-    if (!isFocused && activeTab) {
+    if (activeTab && !isFocused) {
       setInputValue(getDisplayUrl(activeTab.url));
+      setLocalInput(getDisplayUrl(activeTab.url));
     }
-  }, [activeTab?.url, isFocused]);
+  }, [activeTab?.title, activeTab?.url]);
+
+  // Sync prop changes -> local
+  useEffect(() => {
+    if (!isFocused) setLocalInput(inputValue);
+  }, [inputValue, isFocused]);
+
+  // Debounced local -> parent
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (localInput !== inputValue) setInputValue(localInput);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [localInput]);
 
   // AI query handler
   const sendAiQuery = useCallback(async (prompt) => {
@@ -227,16 +242,19 @@ export default function AddressBar() {
   function toggleBookmark() {
     if (!activeTab || !activeTab.url || activeTab.url.startsWith('flip://')) return;
     if (isBookmarked) {
-      removeBookmark(activeTab.url);
-      sileo.info("Bookmark removed");
+      const bm = bookmarks.find((b) => b.url === activeTab.url);
+      if (bm) {
+        removeBookmark(bm.id);
+        if (sileo) sileo.success('Bookmark removed');
+      }
     } else {
       addBookmark({
         title: activeTab.title || activeTab.url,
         url: activeTab.url,
-        favicon: activeTab.favicon,
+        favicon: activeTab.favicon || '',
         dateAdded: Date.now()
       });
-      sileo.success("Bookmark added!");
+      if (sileo) sileo.success('Bookmark saved');
     }
   }
 
@@ -324,8 +342,8 @@ export default function AddressBar() {
             id="flip-address-input"
             ref={inputRef}
             type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            value={localInput}
+            onChange={(e) => setLocalInput(e.target.value)}
             onFocus={() => {
               setIsFocused(true);
               setTimeout(() => inputRef.current?.select(), 0);

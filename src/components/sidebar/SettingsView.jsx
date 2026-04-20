@@ -1,4 +1,5 @@
-import { Settings, Search, Shield, Activity, PictureInPicture2, FileUp, FileDown, Palette } from 'lucide-react';
+import { Settings, Search, Shield, Activity, PictureInPicture2, FileUp, FileDown, Palette, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
 import { t } from '../../i18n';
@@ -8,6 +9,13 @@ import CompanionAppCard from './CompanionAppCard';
 function SettingsView() {
   const { settings, updateSettings } = useBrowserStore();
   const lang = settings.language || 'en';
+  const [cacheCleared, setCacheCleared] = useState(false);
+  const [importFeedback, setImportFeedback] = useState('');
+
+  function showFeedback(setter, msg, ms = 2000) {
+    setter(msg);
+    setTimeout(() => setter(''), ms);
+  }
 
   const securityToggles = [
     { key: 'adBlockEnabled', labelKey: 'adBlocker', ipc: 'setAdBlock' },
@@ -21,11 +29,15 @@ function SettingsView() {
     { key: 'showBookmarksBar', labelKey: 'showBookmarksBar' },
   ];
 
-  function Toggle({ active, onToggle, color = 'bg-flip-500' }) {
+  function Toggle({ active, onToggle }) {
     return (
       <div
         className={clsx('macos-toggle', active && 'active')}
         onClick={onToggle}
+        role="switch"
+        aria-checked={!!active}
+        tabIndex={0}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggle()}
       >
         <div className="macos-toggle-knob" />
       </div>
@@ -45,11 +57,10 @@ function SettingsView() {
             <span className="text-[13px] text-white/65">{t(toggle.labelKey, lang)}</span>
             <Toggle
               active={settings[toggle.key]}
-              color="bg-accent-400"
               onToggle={() => {
                 const newVal = !settings[toggle.key];
                 updateSettings({ [toggle.key]: newVal });
-                if (window.flipAPI && window.flipAPI[toggle.ipc]) window.flipAPI[toggle.ipc](newVal);
+                if (window.flipAPI?.[toggle.ipc]) window.flipAPI[toggle.ipc](newVal);
               }}
             />
           </label>
@@ -62,17 +73,26 @@ function SettingsView() {
           <span className="text-[13px] text-white/65">{t('permissionRequests', lang)}</span>
           <span className="text-[11px] text-accent-400/60 font-medium">{t('denyByDefault', lang)}</span>
         </div>
-        <button
-          className="w-full text-[13px] px-3.5 py-2.5 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.07] text-white/50 hover:text-white/70 transition-colors text-left mt-1"
-          onClick={async () => {
-            if (window.flipAPI?.clearBrowsingData) {
-              await window.flipAPI.clearBrowsingData({ cache: true, storage: true });
-              alert(t('cacheCleared', lang) || 'Cache cleared! Reload pages to see fresh content.');
-            }
-          }}
-        >
-          {t('clearCache', lang) || 'Clear Cache & Site Data'}
-        </button>
+        <div>
+          <button
+            className="w-full text-[13px] px-3.5 py-2.5 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.07] text-white/50 hover:text-white/70 transition-colors text-left mt-1"
+            onClick={async () => {
+              if (window.flipAPI?.clearBrowsingData) {
+                await window.flipAPI.clearBrowsingData({ cache: true, storage: true });
+                setCacheCleared(true);
+                setTimeout(() => setCacheCleared(false), 2500);
+              }
+            }}
+          >
+            {t('clearCache', lang) || 'Clear Cache & Site Data'}
+          </button>
+          {cacheCleared && (
+            <div className="flex items-center gap-1.5 mt-1.5 px-1 animate-fade-in">
+              <CheckCircle2 size={11} className="text-green-400 flex-shrink-0" />
+              <span className="text-[11px] text-green-400">Cache cleared — reload pages to see fresh content</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* General card */}
@@ -98,6 +118,7 @@ function SettingsView() {
           <label className="text-[10px] text-white/40 block mb-1">{t('searchEngine', lang)}</label>
           <select className="w-full input-base text-xs" value={settings.searchEngine} onChange={(e) => updateSettings({ searchEngine: e.target.value })}>
             <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+            <option value="https://www.google.com/search?q=">Google</option>
             <option value="https://www.bing.com/search?q=">Bing</option>
             <option value="https://search.brave.com/search?q=">Brave Search</option>
           </select>
@@ -119,7 +140,7 @@ function SettingsView() {
             { id: 'rose', label: 'Rose Gold', colors: ['#f43f5e', '#fbbf24', '#1c1418'] },
             { id: 'mono', label: 'Mono', colors: ['#a0a0a0', '#c8c8c8', '#161616'] },
           ].map((theme) => {
-            const isActive = (settings.theme || null) === theme.id;
+            const isActive = (settings.theme ?? null) === theme.id;
             return (
               <button
                 key={theme.id || 'default'}
@@ -159,7 +180,7 @@ function SettingsView() {
             onClick={() => updateSettings({ wallpaper: null })}
             className={clsx(
               'h-12 rounded-[10px] border-2 transition-all text-[9px] font-medium',
-              !settings.wallpaper ? 'border-flip-500/60 bg-surface-0' : 'border-white/[0.08] bg-surface-0 opacity-60 hover:opacity-100'
+              !settings.wallpaper ? 'border-flip-500/60 bg-surface-0 text-white/50' : 'border-white/[0.08] bg-surface-0 text-white/25 opacity-60 hover:opacity-100'
             )}
           >
             {t('noWallpaper', lang)}
@@ -179,13 +200,14 @@ function SettingsView() {
             <button
               key={wp.label}
               onClick={() => updateSettings({ wallpaper: wp.url })}
+              title={wp.label}
               className={clsx(
                 'h-12 rounded-[10px] border-2 bg-cover bg-center transition-all text-[9px] font-medium text-white drop-shadow-sm',
                 settings.wallpaper === wp.url ? 'border-flip-500/60' : 'border-white/[0.08] opacity-60 hover:opacity-100'
               )}
               style={{ backgroundImage: `url(${wp.url})` }}
             >
-              {wp.label}
+              {settings.wallpaper === wp.url && <span className="bg-black/40 rounded px-1">{wp.label}</span>}
             </button>
           ))}
         </div>
@@ -229,6 +251,7 @@ function SettingsView() {
                 const merged = [...existing, ...result.data.map((b, i) => ({ ...b, id: Date.now() + i }))];
                 useBrowserStore.getState().setBookmarks(merged);
                 window.flipAPI?.saveBookmarks(merged);
+                showFeedback(setImportFeedback, `Imported ${result.data.length} bookmarks ✓`);
               }
             }} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-white/[0.08] text-[9px] text-white/40 hover:text-white/60 hover:bg-white/5 transition-all">
               <FileUp size={10} /> Import Bookmarks
@@ -236,6 +259,7 @@ function SettingsView() {
             <button onClick={async () => {
               const bookmarks = useBrowserStore.getState().bookmarks;
               await window.flipAPI?.exportBookmarksFile?.(bookmarks);
+              showFeedback(setImportFeedback, `Exported ${bookmarks.length} bookmarks ✓`);
             }} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-white/[0.08] text-[9px] text-white/40 hover:text-white/60 hover:bg-white/5 transition-all">
               <FileDown size={10} /> Export Bookmarks
             </button>
@@ -247,6 +271,7 @@ function SettingsView() {
                 const existing = await window.flipAPI?.getPasswords?.() || [];
                 const merged = [...existing, ...result.data];
                 await window.flipAPI?.savePasswords(merged);
+                showFeedback(setImportFeedback, `Imported ${result.data.length} passwords ✓`);
               }
             }} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-white/[0.08] text-[9px] text-white/40 hover:text-white/60 hover:bg-white/5 transition-all">
               <FileUp size={10} /> Import Passwords
@@ -254,11 +279,19 @@ function SettingsView() {
             <button onClick={async () => {
               const passwords = await window.flipAPI?.getPasswords?.() || [];
               await window.flipAPI?.exportPasswordsFile?.(passwords);
+              showFeedback(setImportFeedback, `Exported ${passwords.length} passwords ✓`);
             }} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-white/[0.08] text-[9px] text-white/40 hover:text-white/60 hover:bg-white/5 transition-all">
               <FileDown size={10} /> Export Passwords
             </button>
           </div>
-          <p className="text-[8px] text-white/15 mt-1">Import Chrome/Firefox bookmarks (HTML) or passwords (CSV)</p>
+          {importFeedback ? (
+            <div className="flex items-center gap-1.5 animate-fade-in">
+              <CheckCircle2 size={10} className="text-green-400 flex-shrink-0" />
+              <p className="text-[10px] text-green-400">{importFeedback}</p>
+            </div>
+          ) : (
+            <p className="text-[8px] text-white/15 mt-1">Import Chrome/Firefox bookmarks (HTML) or passwords (CSV)</p>
+          )}
         </div>
       </div>
 

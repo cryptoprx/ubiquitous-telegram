@@ -58,13 +58,15 @@ export default function NewTabPage({ isSplit = false }) {
   // Quote computed once at module load — no state needed
   const dailyQuote = useMemo(() => getDailyQuote(), []);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [newsError, setNewsError] = useState(false);
 
   function fetchNews() {
     if (!window.flipAPI?.extFetchUrl) return;
     setNewsLoading(true);
+    setNewsError(false);
     window.flipAPI.extFetchUrl('https://feeds.bbci.co.uk/news/world/rss.xml', { timeout: 10000 })
       .then(res => {
-        if (!res?.body) return;
+        if (!res?.body) throw new Error('empty');
         const parser = new DOMParser();
         const xml = parser.parseFromString(res.body, 'text/xml');
         const items = xml.querySelectorAll('item');
@@ -84,13 +86,24 @@ export default function NewTabPage({ isSplit = false }) {
           parsed.push({ title, link, pubDate, desc, thumb });
         });
         setNewsItems(parsed);
+        // Cache for stale-while-retry
+        try { sessionStorage.setItem('flip_news_cache', JSON.stringify(parsed)); } catch {}
       })
-      .catch(() => {})
+      .catch(() => {
+        // Try to show cached content while marking error
+        try {
+          const cached = sessionStorage.getItem('flip_news_cache');
+          if (cached) setNewsItems(JSON.parse(cached));
+        } catch {}
+        setNewsError(true);
+      })
       .finally(() => setNewsLoading(false));
   }
 
   useEffect(() => {
-    inputRef.current?.focus();
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.focus();
+    }, 50);
     // Update clock only when the displayed HH:MM value changes (once per minute)
     // Align to the next minute boundary to avoid cumulative drift
     let timer;
@@ -166,16 +179,16 @@ export default function NewTabPage({ isSplit = false }) {
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
       }
-    : { backgroundColor: '#0c0a09' };
+    : {};
 
   return (
-    <div className="flex-1 relative w-full h-full overflow-hidden" style={wallpaperStyle}>
+    <div className="flex-1 relative w-full h-full overflow-hidden bg-surface-0" style={wallpaperStyle}>
       {/* Ambient orbs (only when no wallpaper) */}
       {!settings.wallpaper && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <Orb color="rgba(255,98,52,0.08)" size={400} x={20} y={-5} delay={0} duration={8} />
-          <Orb color="rgba(45,212,168,0.05)" size={350} x={70} y={10} delay={2} duration={10} />
-          <Orb color="rgba(255,122,77,0.04)" size={300} x={50} y={50} delay={4} duration={12} />
+          <Orb color="rgb(var(--flip-500) / 0.08)" size={400} x={20} y={-5} delay={0} duration={8} />
+          <Orb color="rgb(var(--accent-400) / 0.05)" size={350} x={70} y={10} delay={2} duration={10} />
+          <Orb color="rgb(var(--flip-400) / 0.04)" size={300} x={50} y={50} delay={4} duration={12} />
         </div>
       )}
 
@@ -253,7 +266,7 @@ export default function NewTabPage({ isSplit = false }) {
 
           {/* Shortcuts + Credit */}
           <div className="text-center" style={s(4)}>
-            <div className="inline-flex items-center gap-4 text-[10px] text-white/10 mb-2">
+            <div className="inline-flex items-center flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-white/10 mb-2">
               <span><kbd className="bg-white/[0.04] rounded px-1.5 py-0.5 text-white/20 mr-1">Ctrl+K</kbd>{t('commands', lang)}</span>
               <span><kbd className="bg-white/[0.04] rounded px-1.5 py-0.5 text-white/20 mr-1">Ctrl+T</kbd>{t('newTab', lang)}</span>
               <span><kbd className="bg-white/[0.04] rounded px-1.5 py-0.5 text-white/20 mr-1">Ctrl+L</kbd>{t('urlBar', lang)}</span>
@@ -262,11 +275,14 @@ export default function NewTabPage({ isSplit = false }) {
         </div>
 
         {/* World News Section */}
-        {newsItems.length > 0 && (
+        {(newsItems.length > 0 || newsError || newsLoading) && (
           <div className="max-w-2xl w-full mt-6 mb-8" style={s(5)}>
             <div className="flex items-center gap-2 mb-3">
               <Newspaper size={13} className="text-flip-400/60" />
               <span className="text-[10px] font-semibold text-white/25 uppercase tracking-widest">World News</span>
+              {newsError && newsItems.length > 0 && (
+                <span className="text-[9px] text-white/20 italic">cached</span>
+              )}
               <button
                 onClick={fetchNews}
                 className="ml-auto text-white/15 hover:text-white/40 transition-colors p-1 rounded-lg hover:bg-white/5"
@@ -275,37 +291,49 @@ export default function NewTabPage({ isSplit = false }) {
                 <RefreshCw size={11} className={newsLoading ? 'animate-spin' : ''} />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {newsItems.map((item, i) => (
+            {newsError && newsItems.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <p className="text-[11px] text-white/25">Couldn&rsquo;t load news &mdash; check your connection</p>
                 <button
-                  key={i}
-                  onClick={() => goTo(item.link, item.title)}
-                  className="group flex gap-3 p-3 rounded-[14px] bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 text-left backdrop-blur-sm"
+                  onClick={fetchNews}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[10px] text-white/40 hover:text-white/60 hover:bg-white/[0.07] transition-all"
                 >
-                  {item.thumb && (
-                    <img
-                      src={item.thumb}
-                      alt=""
-                      className="w-16 rounded-lg object-cover flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
-                      style={{ width: 64, height: 64, aspectRatio: '1 / 1' }}
-                      loading="lazy"
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium text-white/60 group-hover:text-white/80 transition-colors leading-snug line-clamp-3">
-                      {item.title}
-                    </p>
-                    {item.pubDate && (
-                      <p className="text-[9px] text-white/15 mt-1.5 font-medium">
-                        {(() => { try { return new Date(item.pubDate).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })()}
-                      </p>
-                    )}
-                  </div>
-                  <ExternalLink size={10} className="text-white/10 group-hover:text-white/30 transition-colors flex-shrink-0 mt-0.5" />
+                  <RefreshCw size={10} />
+                  Retry
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {newsItems.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goTo(item.link, item.title)}
+                    className="group flex gap-3 p-3 rounded-[14px] bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 text-left backdrop-blur-sm"
+                  >
+                    {item.thumb && (
+                      <img
+                        src={item.thumb}
+                        alt=""
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
+                        loading="lazy"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-white/60 group-hover:text-white/80 transition-colors leading-snug line-clamp-3">
+                        {item.title}
+                      </p>
+                      {item.pubDate && (
+                        <p className="text-[9px] text-white/15 mt-1.5 font-medium">
+                          {(() => { try { return new Date(item.pubDate).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })()}
+                        </p>
+                      )}
+                    </div>
+                    <ExternalLink size={10} className="text-white/10 group-hover:text-white/30 transition-colors flex-shrink-0 mt-0.5" />
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="text-center mt-3">
               <a
                 href="#"

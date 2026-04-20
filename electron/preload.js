@@ -130,6 +130,7 @@ contextBridge.exposeInMainWorld('flipAPI', {
 
   // Downloads
   getDownloads: () => ipcRenderer.invoke('get-downloads'),
+  openDownloadFolder: (savePath) => ipcRenderer.invoke('open-download-folder', savePath),
 
   // Download events
   onDownloadStarted: (cb) => {
@@ -209,26 +210,6 @@ contextBridge.exposeInMainWorld('flipAPI', {
     return handler;
   },
   offAiStudioDone: () => { ipcRenderer.removeAllListeners('ai-studio-done'); },
-
-  // Base Wallet (x402)
-  walletHas: () => ipcRenderer.invoke('wallet-has'),
-  walletCreate: () => ipcRenderer.invoke('wallet-create'),
-  walletImport: (seed) => ipcRenderer.invoke('wallet-import', seed),
-  walletInfo: () => ipcRenderer.invoke('wallet-info'),
-  walletExportMnemonic: () => ipcRenderer.invoke('wallet-export-mnemonic'),
-  walletDelete: () => ipcRenderer.invoke('wallet-delete'),
-  walletBalance: (testnet) => ipcRenderer.invoke('wallet-balance', testnet),
-  walletSendUsdc: (to, amount, testnet) => ipcRenderer.invoke('wallet-send-usdc', to, amount, testnet),
-  walletSendEth: (to, amount, testnet) => ipcRenderer.invoke('wallet-send-eth', to, amount, testnet),
-  walletSignX402: (paymentReq) => ipcRenderer.invoke('wallet-sign-x402', paymentReq),
-  walletTxHistory: () => ipcRenderer.invoke('wallet-tx-history'),
-  walletAddTx: (entry) => ipcRenderer.invoke('wallet-add-tx', entry),
-  onX402PaymentRequest: (cb) => {
-    const handler = (_, data) => cb(data);
-    ipcRenderer.on('x402-payment-request', handler);
-    return () => ipcRenderer.removeListener('x402-payment-request', handler);
-  },
-  respondX402Payment: (id, approved) => ipcRenderer.invoke('respond-x402-payment', id, approved),
 
   // License
   licenseCheck: () => ipcRenderer.invoke('license-check'),

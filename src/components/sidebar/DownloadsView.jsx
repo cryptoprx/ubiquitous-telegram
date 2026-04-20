@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
+import { Download, FolderOpen, Trash2, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import { forwardNotification } from '../../lib/companionSync';
 
@@ -16,11 +16,16 @@ function DownloadsView() {
       window.flipAPI.onDownloadUpdated((dl) => setDownloads((p) => p.map((d) => d.id === dl.id ? dl : d)));
       window.flipAPI.onDownloadDone((dl) => {
         setDownloads((p) => p.map((d) => d.id === dl.id ? dl : d));
-        // Forward to companion app
         forwardNotification({ type: 'download', title: 'Download Complete', body: dl.filename || dl.url || '' });
       });
     }
   }, []);
+
+  const hasCompleted = downloads.some((dl) => dl.state === 'completed' || dl.state === 'cancelled' || dl.state === 'interrupted');
+
+  function clearCompleted() {
+    setDownloads((p) => p.filter((dl) => dl.state !== 'completed' && dl.state !== 'cancelled' && dl.state !== 'interrupted'));
+  }
 
   function formatBytes(bytes) {
     if (!bytes) return '0 B';
@@ -30,9 +35,29 @@ function DownloadsView() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
+  function openFile(savePath) {
+    window.flipAPI?.openDownloadFile?.(savePath);
+  }
+
+  function openFolder(savePath) {
+    window.flipAPI?.openDownloadFolder?.(savePath);
+  }
+
   return (
     <div className="flex-1 overflow-y-auto px-3 py-2">
-      <div className="sidebar-section px-0">Downloads</div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="sidebar-section px-0 !mb-0 !pb-0">Downloads</div>
+        {hasCompleted && (
+          <button
+            onClick={clearCompleted}
+            className="flex items-center gap-1 text-[9px] text-white/20 hover:text-white/40 transition-colors"
+            title="Clear completed downloads"
+          >
+            <Trash2 size={10} />
+            <span>Clear done</span>
+          </button>
+        )}
+      </div>
       {downloads.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
           <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-3">
@@ -51,7 +76,26 @@ function DownloadsView() {
               <div key={dl.id} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Download size={12} className={clsx(done ? 'text-green-400' : failed ? 'text-red-400' : 'text-flip-400')} />
-                  <span className="text-xs text-white/70 truncate flex-1">{dl.filename}</span>
+                  <span
+                    className={clsx(
+                      'text-xs truncate flex-1',
+                      done ? 'text-white/70 hover:text-flip-400 cursor-pointer transition-colors' : 'text-white/70'
+                    )}
+                    onClick={done && dl.savePath ? () => openFile(dl.savePath) : undefined}
+                    title={done ? 'Click to open file' : dl.filename}
+                  >
+                    {dl.filename}
+                  </span>
+                  {/* Open folder button for completed downloads */}
+                  {done && dl.savePath && (
+                    <button
+                      onClick={() => openFolder(dl.savePath)}
+                      title="Show in folder"
+                      className="flex items-center gap-1 text-[9px] text-white/25 hover:text-flip-400 transition-colors flex-shrink-0"
+                    >
+                      <FolderOpen size={11} />
+                    </button>
+                  )}
                 </div>
                 {!done && !failed && (
                   <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">

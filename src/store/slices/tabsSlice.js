@@ -14,6 +14,7 @@ export const createTabsSlice = (set, get) => ({
   ],
   activeTabId: 1,
   nextTabId: 2,
+  recentlyClosed: [],
 
   addTab: (url = 'flip://newtab') =>
     set((state) => {
@@ -40,6 +41,10 @@ export const createTabsSlice = (set, get) => ({
 
   closeTab: (id) =>
     set((state) => {
+      const closedTab = state.tabs.find((t) => t.id === id);
+      const recentlyClosed = closedTab && closedTab.url !== 'flip://newtab'
+        ? [{ url: closedTab.url, title: closedTab.title, favicon: closedTab.favicon, closedAt: Date.now() }, ...state.recentlyClosed].slice(0, 10)
+        : state.recentlyClosed;
       const tabs = state.tabs.filter((t) => t.id !== id);
       if (tabs.length === 0) {
         return {
@@ -58,6 +63,7 @@ export const createTabsSlice = (set, get) => ({
           ],
           activeTabId: state.nextTabId,
           nextTabId: state.nextTabId + 1,
+          recentlyClosed,
         };
       }
       const nextIdx = tabs.findIndex((t) => t.id > id);
@@ -66,7 +72,33 @@ export const createTabsSlice = (set, get) => ({
         state.activeTabId === id
           ? tabs[newActiveIdx].id
           : state.activeTabId;
-      return { tabs, activeTabId: newActiveId };
+      return { tabs, activeTabId: newActiveId, recentlyClosed };
+    }),
+
+  reopenLastClosedTab: () =>
+    set((state) => {
+      if (state.recentlyClosed.length === 0) return {};
+      const [last, ...rest] = state.recentlyClosed;
+      const id = state.nextTabId;
+      return {
+        tabs: [
+          ...state.tabs,
+          {
+            id,
+            url: last.url,
+            title: last.title || last.url,
+            favicon: last.favicon,
+            loading: true,
+            canGoBack: false,
+            canGoForward: false,
+            suspended: false,
+            lastActive: Date.now(),
+          },
+        ],
+        activeTabId: id,
+        nextTabId: id + 1,
+        recentlyClosed: rest,
+      };
     }),
 
   setActiveTab: (id) =>

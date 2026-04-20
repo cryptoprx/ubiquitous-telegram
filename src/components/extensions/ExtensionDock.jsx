@@ -2,55 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Grid3X3, Store, X, Puzzle,
-  Bot, Music, StickyNote, CloudSun, Braces, Palette, FileSearch,
-  Hammer, MessageCircle, MessageSquare, Wallet, Zap,
-  KeyRound, ShieldCheck, Newspaper, Calendar, QrCode, Calculator,
-  Ruler, Clock, Wifi, Phone, Image as ImageIcon, Pencil,
-  ArrowLeftRight, Smile, Camera, Gauge, Video,
-  EyeOff, ShieldAlert, Film, Share2, Trash2, Shield,
 } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
 import ExtensionManager from './ExtensionManager';
 import ExtensionHost from './ExtensionHost';
+import { EXT_ICONS } from '../../lib/extIcons';
 
-const EXT_ICONS = {
-  'ai-chat': { icon: Bot, color: 'text-orange-400' },
-  'music-player': { icon: Music, color: 'text-pink-400' },
-  'sample-notes': { icon: StickyNote, color: 'text-amber-400' },
-  'sample-weather': { icon: CloudSun, color: 'text-sky-400' },
-  'json-formatter': { icon: Braces, color: 'text-emerald-400' },
-  'color-picker': { icon: Palette, color: 'text-violet-400' },
-  'regex-tester': { icon: FileSearch, color: 'text-cyan-400' },
-  'flipprx-miner': { icon: Hammer, color: 'text-orange-400' },
-  'flipprx-game': { icon: Zap, color: 'text-rose-400' },
-  'mimo-messenger': { icon: MessageSquare, color: 'text-violet-400' },
-  'community-chat': { icon: MessageCircle, color: 'text-teal-400' },
-  'password-vault': { icon: KeyRound, color: 'text-amber-400' },
-  'totp-auth': { icon: ShieldCheck, color: 'text-emerald-400' },
-  'crypto-news': { icon: Newspaper, color: 'text-sky-400' },
-  'xrpl-wallet': { icon: Wallet, color: 'text-cyan-400' },
-  'calendar-widget': { icon: Calendar, color: 'text-blue-400' },
-  'qr-generator': { icon: QrCode, color: 'text-white/60' },
-  'calculator': { icon: Calculator, color: 'text-teal-400' },
-  'unit-converter': { icon: Ruler, color: 'text-indigo-400' },
-  'world-clock': { icon: Clock, color: 'text-sky-400' },
-  'ip-lookup': { icon: Wifi, color: 'text-green-400' },
-  'flip-call': { icon: Phone, color: 'text-emerald-400' },
-  'image-editor': { icon: ImageIcon, color: 'text-pink-400' },
-  'drawing-canvas': { icon: Pencil, color: 'text-violet-400' },
-  'file-converter': { icon: ArrowLeftRight, color: 'text-blue-400' },
-  'meme-generator': { icon: Smile, color: 'text-yellow-400' },
-  'screenshot-annotator': { icon: Camera, color: 'text-rose-400' },
-  'speed-test': { icon: Gauge, color: 'text-green-400' },
-  'video-downloader': { icon: Video, color: 'text-red-400' },
-  'privacy-dashboard': { icon: EyeOff, color: 'text-purple-400' },
-  'link-checker': { icon: ShieldAlert, color: 'text-amber-400' },
-  'flip-share': { icon: Share2, color: 'text-cyan-400' },
-  'gif-maker': { icon: Film, color: 'text-pink-400' },
-  'file-cleaner': { icon: Trash2, color: 'text-red-400' },
-  'security-dashboard': { icon: Shield, color: 'text-indigo-400' },
-};
 
 const HIDE_DELAY = 800;   // ms before dock hides after pointer leaves
 const PROXIMITY = 48;     // px from bottom edge to trigger reveal
@@ -240,7 +198,7 @@ export default function ExtensionDock() {
       <div
         ref={dockAreaRef}
         className="relative flex items-center justify-center flex-shrink-0"
-        style={{ height: dockVisible ? 'auto' : 6, transition: 'height 300ms ease' }}
+        style={{ minHeight: dockVisible ? 48 : 6, transition: 'min-height 300ms ease' }}
         onMouseEnter={() => { clearTimeout(hideTimerRef.current); setDockVisible(true); }}
         onMouseLeave={() => {
           if (!activeExtId && !showManager) {

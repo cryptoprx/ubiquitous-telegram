@@ -3,66 +3,13 @@ import {
   Puzzle, Plus, Trash2, ToggleLeft, ToggleRight,
   ExternalLink, FolderOpen, AlertCircle, Check,
   Shield, Eye, RefreshCw, Zap, Globe, MessageSquare,
-  CloudSun, StickyNote, MessageCircle, Hammer, Music, Braces, Palette, FileSearch, Bot, Loader2,
-  KeyRound, ShieldCheck, Newspaper, Wallet, Calendar, QrCode, Calculator, Ruler, Clock, Wifi,
-  Phone, Image as ImageIcon, Pencil, ArrowLeftRight, Smile, Camera, Gauge, Video,
-  EyeOff, ShieldAlert, Film, Share2,
+  Braces, Loader2,
 } from 'lucide-react';
 import clsx from 'clsx';
 import useBrowserStore from '../../store/browserStore';
+import { EXT_ICONS, EXT_GRADIENTS, DEFAULT_GRADIENT } from '../../lib/extIcons';
 
-const EXT_ICONS = {
-  'ai-chat': { type: 'lucide', icon: Bot, color: 'text-orange-400' },
-  'music-player': { type: 'lucide', icon: Music, color: 'text-pink-400' },
-  'sample-notes': { type: 'lucide', icon: StickyNote, color: 'text-amber-400' },
-  'sample-weather': { type: 'lucide', icon: CloudSun, color: 'text-sky-400' },
-  'json-formatter': { type: 'lucide', icon: Braces, color: 'text-emerald-400' },
-  'color-picker': { type: 'lucide', icon: Palette, color: 'text-violet-400' },
-  'regex-tester': { type: 'lucide', icon: FileSearch, color: 'text-cyan-400' },
-  'flipprx-game': { type: 'lucide', icon: Zap, color: 'text-rose-400' },
-  'flipprx-miner': { type: 'lucide', icon: Hammer, color: 'text-orange-400' },
-  'mimo-messenger': { type: 'lucide', icon: MessageSquare, color: 'text-violet-400' },
-  'community-chat': { type: 'lucide', icon: MessageCircle, color: 'text-teal-400' },
-  'password-vault': { type: 'lucide', icon: KeyRound, color: 'text-amber-400' },
-  'totp-auth': { type: 'lucide', icon: ShieldCheck, color: 'text-emerald-400' },
-  'crypto-news': { type: 'lucide', icon: Newspaper, color: 'text-sky-400' },
-  'xrpl-wallet': { type: 'lucide', icon: Wallet, color: 'text-cyan-400' },
-  'calendar-widget': { type: 'lucide', icon: Calendar, color: 'text-blue-400' },
-  'qr-generator': { type: 'lucide', icon: QrCode, color: 'text-white/60' },
-  'calculator': { type: 'lucide', icon: Calculator, color: 'text-teal-400' },
-  'unit-converter': { type: 'lucide', icon: Ruler, color: 'text-indigo-400' },
-  'world-clock': { type: 'lucide', icon: Clock, color: 'text-sky-400' },
-  'ip-lookup': { type: 'lucide', icon: Wifi, color: 'text-green-400' },
-  'flip-call': { type: 'lucide', icon: Phone, color: 'text-emerald-400' },
-  'image-editor': { type: 'lucide', icon: ImageIcon, color: 'text-pink-400' },
-  'drawing-canvas': { type: 'lucide', icon: Pencil, color: 'text-violet-400' },
-  'file-converter': { type: 'lucide', icon: ArrowLeftRight, color: 'text-blue-400' },
-  'meme-generator': { type: 'lucide', icon: Smile, color: 'text-yellow-400' },
-  'screenshot-annotator': { type: 'lucide', icon: Camera, color: 'text-rose-400' },
-  'speed-test': { type: 'lucide', icon: Gauge, color: 'text-green-400' },
-  'video-downloader': { type: 'lucide', icon: Video, color: 'text-red-400' },
-  'privacy-dashboard': { type: 'lucide', icon: EyeOff, color: 'text-purple-400' },
-  'link-checker': { type: 'lucide', icon: ShieldAlert, color: 'text-amber-400' },
-  'flip-share': { type: 'lucide', icon: Share2, color: 'text-cyan-400' },
-  'gif-maker': { type: 'lucide', icon: Film, color: 'text-pink-400' },
-  'file-cleaner': { type: 'lucide', icon: Trash2, color: 'text-red-400' },
-  'security-dashboard': { type: 'lucide', icon: Shield, color: 'text-indigo-400' },
-};
 
-const EXT_GRADIENTS = {
-  'sample-weather': 'from-sky-500/20 to-blue-600/20',
-  'sample-notes': 'from-amber-500/20 to-orange-600/20',
-  'mimo-messenger': 'from-violet-500/20 to-purple-600/20',
-  'community-chat': 'from-teal-500/20 to-emerald-600/20',
-  'flipprx-game': 'from-rose-500/20 to-red-600/20',
-  'flipprx-miner': 'from-orange-500/20 to-amber-600/20',
-  'music-player': 'from-pink-500/20 to-rose-600/20',
-  'json-formatter': 'from-emerald-500/20 to-green-600/20',
-  'color-picker': 'from-violet-500/20 to-fuchsia-600/20',
-  'regex-tester': 'from-cyan-500/20 to-sky-600/20',
-  'ai-chat': 'from-orange-500/20 to-amber-600/20',
-  'xrpl-wallet': 'from-cyan-500/20 to-blue-600/20',
-};
 
 const TYPE_CONFIG = {
   sidebar: { label: 'Sidebar', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Puzzle },
@@ -172,8 +119,8 @@ export default function ExtensionManager() {
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {extensions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-[16px] bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-              <Puzzle size={24} className="text-white/10" />
+            <div className="w-14 h-14 rounded-[16px] bg-gradient-to-br from-flip-500/10 to-accent-400/10 border border-white/[0.06] flex items-center justify-center mb-4">
+              <Puzzle size={24} className="text-flip-400/40" />
             </div>
             <p className="text-xs text-white/40 mb-1">No extensions yet</p>
             <p className="text-[10px] text-white/20 max-w-48 leading-relaxed">
@@ -219,7 +166,7 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
   const { manifest, enabled, id, source } = extension;
   const isMarketplace = source === 'marketplace';
   const extIcon = EXT_ICONS[id];
-  const gradient = EXT_GRADIENTS[id] || 'from-flip-500/20 to-flip-700/20';
+  const gradient = EXT_GRADIENTS[id] || DEFAULT_GRADIENT;
   const typeConf = TYPE_CONFIG[manifest.type] || TYPE_CONFIG.sidebar;
   const isWebview = manifest.content_type === 'webview';
 
@@ -244,11 +191,9 @@ function ExtensionCard({ extension, onToggle, onRemove, onUninstall, isUninstall
               ? `bg-gradient-to-br ${gradient}`
               : 'bg-white/[0.03]'
           )}>
-            {extIcon?.type === 'image'
-              ? <img src={extIcon.src} alt="" className="w-5 h-5 object-contain" />
-              : extIcon?.type === 'lucide'
-                ? React.createElement(extIcon.icon, { size: 18, className: extIcon.color })
-                : (manifest.name?.[0] || 'E')}
+            {extIcon
+              ? React.createElement(extIcon.icon, { size: 18, className: extIcon.color })
+              : (manifest.name?.[0] || 'E')}
           </div>
 
           {/* Info */}

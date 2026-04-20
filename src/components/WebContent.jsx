@@ -298,6 +298,7 @@ function autoTranslateIfNeeded(webview, tabId) {
 export default function WebContent({ tabId: overrideTabId }) {
   const { tabs, activeTabId, updateTab } = useBrowserStore();
   const webviewRefs = useRef({});
+  const freshWebviews = useRef(new Set()); // tracks webviews loading from initial src (prevents double-load crash)
 
   const targetTabId = overrideTabId || activeTabId;
 
@@ -311,7 +312,13 @@ export default function WebContent({ tabId: overrideTabId }) {
     if (!webview || webview._flipSetup) return;
     webview._flipSetup = true;
 
+    // Mark this webview as freshly created — it's loading from its src attribute.
+    // The flag is cleared after the first load starts so subsequent navigations work normally.
+    freshWebviews.current.add(tabId);
+
     webview.addEventListener('did-start-loading', () => {
+      // Clear fresh flag after first load begins — future navigate events should use loadURL
+      freshWebviews.current.delete(tabId);
       useBrowserStore.getState().updateTab(tabId, { loading: true });
     });
 
@@ -356,6 +363,7 @@ export default function WebContent({ tabId: overrideTabId }) {
         url: e.url,
         canGoBack: webview.canGoBack(),
         canGoForward: webview.canGoForward(),
+        error: null, // clear any error state on successful navigation
       });
     });
 
@@ -373,18 +381,12 @@ export default function WebContent({ tabId: overrideTabId }) {
     });
 
     webview.addEventListener('did-fail-load', (e) => {
-      if (e.errorCode === -3) return; // Aborted
+      if (e.errorCode === -3) return; // Aborted — user navigated away
       const errInfo = ERROR_DESCRIPTIONS[String(e.errorCode)];
       useBrowserStore.getState().updateTab(tabId, {
         loading: false,
         error: errInfo ? { code: e.errorCode, title: errInfo.title, detail: errInfo.detail, url: e.validatedURL || '' } : null,
       });
-    });
-
-    webview.addEventListener('did-navigate', () => {
-      // Clear error state on successful navigation
-      const tab = useBrowserStore.getState().tabs.find(t => t.id === tabId);
-      if (tab?.error) useBrowserStore.getState().updateTab(tabId, { error: null });
     });
 
     // Custom context menu
@@ -501,6 +503,9 @@ export default function WebContent({ tabId: overrideTabId }) {
       const { tabId, url } = e.detail;
       const webview = webviewRefs.current[tabId];
       if (webview && url && !url.startsWith('flip://')) {
+        // If the webview was just created with this URL as its src attribute,
+        // calling loadURL() simultaneously crashes the renderer.
+        if (freshWebviews.current.has(tabId)) return;
         webview.loadURL(url, {
           extraHeaders: 'Cache-Control: no-cache\nPragma: no-cache\n',
         });
@@ -1352,6 +1357,8 @@ export default function WebContent({ tabId: overrideTabId }) {
                   if (el) {
                     webviewRefs.current[tab.id] = el;
                     setupWebview(el, tab.id);
+                  } else {
+                    delete webviewRefs.current[tab.id];
                   }
                 }}
                 src={tab.url}

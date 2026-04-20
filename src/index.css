@@ -23,6 +23,21 @@
   --scrollbar-hover: rgba(255,255,255,0.18);
 }
 
+/* ── Accessibility & Focus Rings ── */
+*:focus-visible {
+  outline: 2px solid rgba(var(--flip-500), 0.4);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Theme: Ocean Blue ── */
 [data-theme="ocean"] {
   --flip-400: 96 165 250;
@@ -120,8 +135,12 @@
 
   /* Scrollbar — Chromium */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar:hover {
+    width: 8px;
   }
 
   ::-webkit-scrollbar-track {
@@ -161,8 +180,25 @@
   }
 
   select option {
-    background: #1c1917;
-    color: rgba(255, 255, 255, 0.8);
+    background: rgb(var(--surface-2));
+    color: rgba(var(--text-base), 0.8);
+  }
+
+  /* Text selection — uses theme accent */
+  ::selection {
+    background: rgb(var(--flip-500) / 0.3);
+    color: white;
+  }
+
+  /* Keyboard focus ring — visible only for keyboard users */
+  *:focus-visible {
+    outline: 2px solid rgb(var(--flip-500) / 0.4);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+  /* Remove focus-visible outline for elements that handle their own focus styles */
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: none;
   }
 
   /* Webview styling */
@@ -290,8 +326,8 @@
 
 /* Command palette overlay */
 .command-overlay {
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(20px);
+  background: rgb(var(--surface-0) / 0.7);
+  backdrop-filter: blur(24px);
 }
 
 /* Extension iframe styles */
@@ -316,9 +352,9 @@
 
 /* macOS-style vibrancy material for floating panels */
 .vibrancy {
-  background: rgba(30, 30, 30, 0.88);
-  backdrop-filter: blur(40px) saturate(1.6);
-  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  background: rgba(var(--surface-1), 0.88);
+  backdrop-filter: blur(24px) saturate(190%) contrast(110%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%) contrast(110%);
   will-change: opacity, transform;
 }
 
@@ -338,5 +374,14 @@
 }
 .macos-toggle.active .macos-toggle-knob {
   transform: translateX(14px);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.05ms !important;
+  }
 }
 

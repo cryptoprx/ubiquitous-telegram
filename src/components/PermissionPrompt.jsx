@@ -1,9 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useBrowserStore from '../store/browserStore';
 
-/** Permission request prompt — floating overlay card */
+/** Permission request prompt — floating overlay card.
+ *  Auto-dismisses if the requesting tab navigates away before the user responds. */
 export default function PermissionPrompt() {
-  const { permissionRequest, setPermissionRequest } = useBrowserStore();
+  const { permissionRequest, setPermissionRequest, tabs, activeTabId } = useBrowserStore();
+  // Track the tab URL at the moment the prompt appeared so we can detect navigation
+  const originUrlRef = useRef(null);
+
+  useEffect(() => {
+    if (permissionRequest) {
+      // Snapshot the current URL of the active tab
+      const tab = tabs.find(t => t.id === activeTabId);
+      originUrlRef.current = tab?.url ?? null;
+    } else {
+      originUrlRef.current = null;
+    }
+  }, [permissionRequest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-dismiss if the active tab navigates away from where the prompt originated
+  useEffect(() => {
+    if (!permissionRequest || !originUrlRef.current) return;
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab && tab.url && tab.url !== originUrlRef.current) {
+      // User navigated away — auto-deny silently
+      window.flipAPI?.respondPermission(permissionRequest.id, false);
+      setPermissionRequest(null);
+    }
+  }, [tabs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!permissionRequest) return null;
 

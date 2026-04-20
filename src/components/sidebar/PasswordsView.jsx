@@ -98,7 +98,44 @@ function PasswordsView() {
         <div className="mt-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
           <input value={newSite} onChange={(e) => setNewSite(e.target.value)} placeholder="Site (e.g. github.com)" className="w-full input-base text-xs" />
           <input value={newUser} onChange={(e) => setNewUser(e.target.value)} placeholder="Username / Email" className="w-full input-base text-xs" />
-          <input value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Password" type="password" className="w-full input-base text-xs" />
+          <div className="flex items-center gap-1.5">
+            <input value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Password" type="password" className="flex-1 input-base text-xs" />
+            <button
+              onClick={() => {
+                const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+                let pwd = '';
+                const arr = new Uint8Array(20);
+                crypto.getRandomValues(arr);
+                for (let i = 0; i < 20; i++) pwd += chars[arr[i] % chars.length];
+                setNewPass(pwd);
+              }}
+              className="px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[9px] text-white/40 hover:text-white/60 hover:bg-white/[0.07] transition-colors flex-shrink-0"
+              title="Generate strong password"
+            >
+              Generate
+            </button>
+          </div>
+          {newPass && (() => {
+            const len = newPass.length;
+            const hasUpper = /[A-Z]/.test(newPass);
+            const hasLower = /[a-z]/.test(newPass);
+            const hasNum = /[0-9]/.test(newPass);
+            const hasSymbol = /[^a-zA-Z0-9]/.test(newPass);
+            const variety = [hasUpper, hasLower, hasNum, hasSymbol].filter(Boolean).length;
+            const score = len >= 16 && variety >= 3 ? 3 : len >= 10 && variety >= 2 ? 2 : 1;
+            const label = ['', 'Weak', 'Medium', 'Strong'][score];
+            const color = ['', 'bg-red-400', 'bg-yellow-400', 'bg-green-400'][score];
+            return (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex gap-1">
+                  {[1, 2, 3].map((s) => (
+                    <div key={s} className={`h-1 flex-1 rounded-full ${s <= score ? color : 'bg-white/[0.06]'} transition-colors`} />
+                  ))}
+                </div>
+                <span className={`text-[9px] ${score === 3 ? 'text-green-400' : score === 2 ? 'text-yellow-400' : 'text-red-400'}`}>{label}</span>
+              </div>
+            );
+          })()}
           <button onClick={handleAdd} className="w-full py-1.5 rounded-lg bg-flip-500/20 text-flip-400 text-xs font-medium hover:bg-flip-500/30 transition-colors">
             Save Credential
           </button>

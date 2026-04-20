@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Bot, Send, Play, Code2, FileJson, Sparkles, Copy, Download, Upload,
   ChevronRight, X, Loader2, Package, Eye, RotateCcw, Trash2, Plus,
-  Puzzle, BookOpen, Zap, Globe, CreditCard, Database, Layout, Palette,
+  Puzzle, BookOpen, Zap, Globe, Database, Layout, Palette,
 } from 'lucide-react';
 
 const TEMPLATES = [
@@ -183,63 +183,6 @@ const TEMPLATES = [
   );
 }`,
     manifest: { id: 'api-dashboard', name: 'API Dashboard', version: '1.0.0', description: 'Fetch and display API data', author: '', permissions: ['network'], sidebar: { file: 'index.jsx', width: 380 } },
-  },
-  {
-    id: 'crypto-pay',
-    name: 'Micropay Widget',
-    icon: CreditCard,
-    description: 'x402 payment extension starter',
-    code: `function MicropayWidget() {
-  const [wallet, setWallet] = React.useState(null);
-  const [amount, setAmount] = React.useState('0.01');
-  const [to, setTo] = React.useState('');
-  const [status, setStatus] = React.useState('');
-
-  React.useEffect(() => {
-    Flip.x402.walletInfo().then(setWallet).catch(() => {});
-  }, []);
-
-  async function sendPayment() {
-    if (!to || !amount) return;
-    setStatus('Sending...');
-    try {
-      const res = await Flip.x402.pay({ to, amount, reason: 'Micropay Widget payment' });
-      setStatus(res.success ? 'Payment sent! TX: ' + (res.txHash || '').slice(0, 16) + '...' : 'Error: ' + (res.error || 'Failed'));
-    } catch (e) {
-      setStatus('Error: ' + e.message);
-    }
-  }
-
-  const s = {
-    wrap: { padding: 16, fontFamily: 'Inter, system-ui, sans-serif', color: '#e5e5e5', minHeight: '100vh', background: '#1a1a1a' },
-    card: { padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', marginBottom: 12 },
-    label: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4, display: 'block' },
-    input: { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e5e5e5', fontSize: 13, outline: 'none', marginBottom: 10, boxSizing: 'border-box' },
-    btn: { width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 14 },
-  };
-
-  return (
-    <div style={s.wrap}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Micropay</h2>
-      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 16 }}>Send USDC payments on Base</p>
-      {wallet && (
-        <div style={s.card}>
-          <span style={s.label}>Your wallet</span>
-          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)' }}>{wallet.address}</span>
-        </div>
-      )}
-      <div style={s.card}>
-        <span style={s.label}>Recipient address</span>
-        <input style={s.input} value={to} onChange={e => setTo(e.target.value)} placeholder="0x..." />
-        <span style={s.label}>Amount (USDC)</span>
-        <input style={s.input} value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.01" />
-        <button style={s.btn} onClick={sendPayment}>Send Payment</button>
-      </div>
-      {status && <p style={{ fontSize: 12, color: status.startsWith('Error') ? '#f87171' : '#2dd4bf', marginTop: 8 }}>{status}</p>}
-    </div>
-  );
-}`,
-    manifest: { id: 'micropay-widget', name: 'Micropay Widget', version: '1.0.0', description: 'Send USDC payments on Base chain', author: '', permissions: ['x402'], sidebar: { file: 'index.jsx', width: 380 } },
   },
 ];
 
@@ -459,17 +402,70 @@ function AIChatPanel({ onInsertCode, onInsertManifest }) {
 // NO Babel in parent page — it conflicts with Monaco's AMD loader.
 
 function buildPreviewHTML() {
+  // Resolve active theme tokens from the browser document.
+  // Falls back to default orange flip theme if CSS vars aren't available.
+  function tok(v, fallback) {
+    try {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+      return val || fallback;
+    } catch { return fallback; }
+  }
+  const flipRgb   = tok('--flip-500',   '255 98 52');
+  const accentRgb = tok('--accent-400', '45 212 168');
+  const flip    = `rgb(${flipRgb})`;
+  const flipLt  = `rgb(${tok('--flip-400', '255 122 77')})`;
+  const accent  = `rgb(${accentRgb})`;
+  const bg0     = `rgb(${tok('--surface-0', '16 16 16')})`;
+
   // Build as array of plain strings — zero escaping issues
   var p = [];
   p.push('<!DOCTYPE html><html><head><meta charset="utf-8">');
-  p.push('<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;color:#e5e5e5;font-family:Inter,system-ui,sans-serif}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}</style>');
+  p.push(`<style>
+    :root{
+      --flip:${flip};--flip-light:${flipLt};--accent:${accent};
+      --bg:${bg0};--text:rgba(255,255,255,0.82);--text-muted:rgba(255,255,255,0.45);
+      --border:rgba(255,255,255,0.07);--radius-sm:8px;--radius:10px;--radius-lg:14px;
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    body{background:transparent;color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:13px;padding:12px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:9999px}
+    h1,h2,h3{font-weight:600;color:rgba(255,255,255,0.9)}
+    h1{font-size:18px;margin-bottom:4px}h2{font-size:15px;margin-bottom:4px}h3{font-size:13px}
+    p{color:var(--text-muted);line-height:1.6}
+    a{color:var(--flip-light);text-decoration:none}a:hover{text-decoration:underline}
+    button,.btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);padding:6px 12px;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;font-weight:500;transition:all 0.15s}
+    button:hover,.btn:hover{background:rgba(${flipRgb},0.12);border-color:rgba(${flipRgb},0.25);color:rgba(255,255,255,0.9)}
+    .btn-primary{background:rgba(${flipRgb},0.18);border-color:rgba(${flipRgb},0.30);color:var(--flip-light);font-weight:600}
+    .btn-primary:hover{background:rgba(${flipRgb},0.28);color:#fff}
+    .btn-ghost{background:transparent;border-color:transparent;color:var(--text-muted)}
+    input,textarea,select{display:block;width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);color:rgba(255,255,255,0.9);padding:7px 11px;font-size:12px;font-family:inherit;outline:none;transition:border-color 0.15s}
+    input:focus,textarea:focus,select:focus{border-color:rgba(${flipRgb},0.45);box-shadow:0 0 0 3px rgba(${flipRgb},0.08)}
+    input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.22)}
+    label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:5px;font-weight:500}
+    .card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px}
+    .badge{display:inline-flex;align-items:center;background:rgba(${flipRgb},0.12);color:var(--flip-light);border:1px solid rgba(${flipRgb},0.20);padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+    .badge-success{background:rgba(34,197,94,0.12);color:#4ade80;border-color:rgba(34,197,94,0.20)}
+    .badge-warning{background:rgba(245,158,11,0.12);color:#fbbf24;border-color:rgba(245,158,11,0.20)}
+    .badge-error{background:rgba(239,68,68,0.12);color:#f87171;border-color:rgba(239,68,68,0.20)}
+    .alert{padding:10px 12px;border-radius:var(--radius);font-size:12px;border:1px solid;margin-bottom:8px}
+    .alert-info{background:rgba(${flipRgb},0.08);border-color:rgba(${flipRgb},0.18);color:var(--flip-light)}
+    .alert-success{background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.18);color:#4ade80}
+    .alert-warning{background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.18);color:#fbbf24}
+    .divider{height:1px;background:var(--border);margin:12px 0}
+    @keyframes flip-spin{to{transform:rotate(360deg)}}
+    .flip-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(${flipRgb},0.2);border-top-color:var(--flip-light);border-radius:50%;animation:flip-spin 0.7s linear infinite}
+    .flex{display:flex}.flex-col{flex-direction:column}.flex-1{flex:1;min-width:0}.gap-1{gap:4px}.gap-2{gap:8px}.items-center{align-items:center}.justify-between{justify-content:space-between}
+    .text-muted{color:var(--text-muted)}.text-flip{color:var(--flip-light)}.text-accent{color:var(--accent)}.text-error{color:#f87171}.text-success{color:#4ade80}
+    .mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mb-2{margin-bottom:8px}.mb-4{margin-bottom:16px}
+  </style>`);
   p.push('<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>');
   p.push('<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>');
   p.push('<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>');
   p.push('</head><body><div id="root"><p style="padding:16px;color:rgba(255,255,255,0.3);font-size:12px">Loading preview...</p></div>');
   p.push('<script>');
   // Flip SDK mock
-  p.push('var Flip={tabs:{list:async function(){return[{id:1,url:"https://example.com",title:"Example",active:true}]},open:async function(){},close:async function(){},navigate:async function(){},getActive:async function(){return{id:1,url:"https://example.com",title:"Example"}},getContent:async function(){return"Sample content."},getSelectedText:async function(){return"Selected text."}},storage:{_s:{},get:async function(k){return this._s[k]||null},set:async function(k,v){this._s[k]=v},remove:async function(k){delete this._s[k]},keys:async function(){return Object.keys(this._s)}},fetch:async function(u){return(await fetch(u)).json()},ui:{showToast:function(){},setBadge:function(){},getTheme:function(){return{mode:"dark",primary:"#f97316",accent:"#2dd4bf"}}},x402:{pay:async function(){return{success:true,txHash:"0xaaa"}},balance:async function(){return{address:"0x1234",usdc:"10.50",eth:"0.01"}},walletInfo:async function(){return{address:"0x1234",network:"eip155:8453"}}},bookmarks:{list:async function(){return[]},add:async function(){}},history:{search:async function(){return[]}}};');
+  p.push('var Flip={tabs:{list:async function(){return[{id:1,url:"https://example.com",title:"Example",active:true}]},open:async function(){},close:async function(){},navigate:async function(){},getActive:async function(){return{id:1,url:"https://example.com",title:"Example"}},getContent:async function(){return"Sample content."},getSelectedText:async function(){return"Selected text."}},storage:{_s:{},get:async function(k){return this._s[k]||null},set:async function(k,v){this._s[k]=v},remove:async function(k){delete this._s[k]},keys:async function(){return Object.keys(this._s)}},fetch:async function(u){return(await fetch(u)).json()},ui:{showToast:function(){},setBadge:function(){},getTheme:function(){return{mode:"dark",primary:"#f97316",accent:"#2dd4bf"}}},bookmarks:{list:async function(){return[]},add:async function(){}},history:{search:async function(){return[]}}};');
   p.push('window.Flip=Flip;');
   // Run function: find component, Babel compile, render
   p.push('function _run(code){');
@@ -569,7 +565,7 @@ function ManifestEditor({ manifest, onChange }) {
     onChange({ ...manifest, [key]: value });
   }
 
-  const allPerms = ['tabs', 'storage', 'network', 'bookmarks', 'history', 'x402'];
+  const allPerms = ['tabs', 'storage', 'network', 'bookmarks', 'history'];
 
   return (
     <div className="p-4 space-y-3">
@@ -587,7 +583,7 @@ function ManifestEditor({ manifest, onChange }) {
             value={manifest[f.key] || ''}
             onChange={e => update(f.key, e.target.value)}
             placeholder={f.placeholder}
-            className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/70 placeholder:text-white/15 outline-none focus:border-flip-500/30 transition-colors"
+            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/70 placeholder:text-white/15 outline-none focus:border-flip-500/30 transition-colors"
           />
         </div>
       ))}
